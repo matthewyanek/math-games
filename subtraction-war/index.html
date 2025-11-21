@@ -1,1695 +1,844 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Subtraction War - Math Game</title>
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary-dark: #2e7d32;
-            --primary-medium: #388e3c;
-            --primary-light: #43a047;
-            --primary-lightest: #e8f5e9;
-            --secondary-dark: #f57c00;
-            --secondary-medium: #ff9800;
-            --secondary-light: #ffb74d;
-            --gray-dark: #3c4043;
-            --gray-medium: #5f6368;
-            --gray-light: #dadce0;
-            --bg-dark: #202124;
-            --bg-medium: #292a2d;
-            --bg-light: #303134;
-            --text-primary: #e8eaed;
-            --text-secondary: #9aa0a6;
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Game state
+        let players = [];
+        let currentPlayerIndex = 0;
+        let gameActive = true;
+        let roundActive = false;
+        let deck = [];
+        let playerDecks = [];
+        let playerHands = [];
+        let selectedCard = null;
+        let playerEquations = [];
+        let battleCompleted = false;
+        
+        // DOM elements
+        const playersContainer = document.getElementById('playersContainer');
+        const cardsContainer = document.getElementById('cardsContainer');
+        const playerTurn = document.getElementById('playerTurn');
+        const deckInfo = document.getElementById('deckInfo');
+        const cardSelectionInfo = document.getElementById('cardSelectionInfo');
+        const equationBuilder = document.getElementById('equationBuilder');
+        const player1MinuendSlots = document.getElementById('player1MinuendSlots');
+        const player1SubtrahendSlots = document.getElementById('player1SubtrahendSlots');
+        const player1Result = document.getElementById('player1Result');
+        const player1Difference = document.getElementById('player1Difference');
+        const player2MinuendSlots = document.getElementById('player2MinuendSlots');
+        const player2SubtrahendSlots = document.getElementById('player2SubtrahendSlots');
+        const player2Result = document.getElementById('player2Result');
+        const player2Difference = document.getElementById('player2Difference');
+        const battleResult = document.getElementById('battleResult');
+        const dealBtn = document.getElementById('dealBtn');
+        const battleBtn = document.getElementById('battleBtn');
+        const clearEquationBtn = document.getElementById('clearEquationBtn');
+        const nextRoundBtn = document.getElementById('nextRoundBtn');
+        const resetGameBtn = document.getElementById('resetGameBtn');
+        const gameLog = document.getElementById('gameLog');
+        const winMessage = document.getElementById('winMessage');
+        const playerCountSelect = document.getElementById('playerCount');
+        const digitCountSelect = document.getElementById('digitCount');
+        const cardsPerPlayerSelect = document.getElementById('cardsPerPlayer');
+        const faceCardsSelect = document.getElementById('faceCards');
+        const aceValueSelect = document.getElementById('aceValue');
+        const applySettingsBtn = document.getElementById('applySettings');
+        const themeToggle = document.getElementById('themeToggle');
+        
+        // Theme toggle functionality
+        let isLightMode = false;
+        themeToggle.addEventListener('click', function() {
+            isLightMode = !isLightMode;
+            document.body.classList.toggle('light-mode', isLightMode);
+            themeToggle.innerHTML = isLightMode ? 
+                '<span>☀️ Light Mode</span>' : 
+                '<span>🌙 Dark Mode</span>';
+        });
+        
+        // Initialize the game
+        function initializeGame() {
+            const playerCount = parseInt(playerCountSelect.value);
+            const digitCount = parseInt(digitCountSelect.value);
+            const cardsPerPlayer = parseInt(cardsPerPlayerSelect.value);
             
-            /* Light mode variables */
-            --light-bg: #ffffff;
-            --light-bg-secondary: #f8f9fa;
-            --light-bg-tertiary: #e9ecef;
-            --light-text-primary: #202124;
-            --light-text-secondary: #5f6368;
-            --light-border: #dadce0;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Nunito', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        body {
-            background-color: var(--bg-dark);
-            color: var(--text-primary);
-            line-height: 1.6;
-            padding: 20px;
-            min-height: 100vh;
-            transition: all 0.3s ease;
-        }
-        
-        body.light-mode {
-            background-color: var(--light-bg);
-            color: var(--light-text-primary);
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background-color: var(--bg-medium);
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            padding: 30px;
-            border: 1px solid var(--gray-medium);
-            transition: all 0.3s ease;
-        }
-        
-        body.light-mode .container {
-            background-color: var(--light-bg);
-            border: 1px solid var(--light-border);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-        
-        header {
-            text-align: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid var(--gray-medium);
-        }
-        
-        body.light-mode header {
-            border-bottom: 1px solid var(--light-border);
-        }
-        
-        h1 {
-            color: var(--primary-light);
-            margin-bottom: 10px;
-            font-size: 2.2rem;
-            font-weight: 700;
-        }
-        
-        .subtitle {
-            color: var(--text-secondary);
-            font-size: 1.1rem;
-            font-weight: 400;
-        }
-        
-        body.light-mode .subtitle {
-            color: var(--light-text-secondary);
-        }
-        
-        section {
-            margin-bottom: 30px;
-        }
-        
-        h2 {
-            color: var(--primary-light);
-            margin-bottom: 15px;
-            padding-bottom: 5px;
-            border-bottom: 2px solid var(--gray-medium);
-            font-weight: 600;
-        }
-        
-        body.light-mode h2 {
-            border-bottom: 2px solid var(--light-border);
-        }
-        
-        p {
-            margin-bottom: 15px;
-        }
-        
-        .instructions {
-            background-color: var(--bg-light);
-            padding: 20px;
-            border-radius: 8px;
-            border-left: 4px solid var(--primary-medium);
-        }
-        
-        body.light-mode .instructions {
-            background-color: var(--light-bg-secondary);
-        }
-        
-        ol, ul {
-            margin-left: 20px;
-            margin-bottom: 15px;
-        }
-        
-        li {
-            margin-bottom: 8px;
-        }
-        
-        .game-setup {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-        
-        .setup-card {
-            background-color: var(--bg-light);
-            padding: 15px;
-            border-radius: 8px;
-            border-top: 4px solid var(--primary-medium);
-        }
-        
-        body.light-mode .setup-card {
-            background-color: var(--light-bg-secondary);
-        }
-        
-        .example {
-            background-color: var(--secondary-dark);
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 20px;
-        }
-        
-        body.light-mode .example {
-            background-color: #fff3e0;
-        }
-        
-        .example h3 {
-            color: var(--primary-lightest);
-            margin-bottom: 10px;
-        }
-        
-        body.light-mode .example h3 {
-            color: var(--secondary-dark);
-        }
-        
-        .variations {
-            background-color: var(--bg-light);
-            padding: 20px;
-            border-radius: 8px;
-        }
-        
-        body.light-mode .variations {
-            background-color: var(--light-bg-secondary);
-        }
-        
-        .game-area {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-        
-        .players-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin: 20px 0;
-        }
-        
-        .player-card {
-            background-color: var(--bg-light);
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-            border: 2px solid var(--primary-medium);
-            transition: all 0.3s ease;
-        }
-        
-        body.light-mode .player-card {
-            background-color: var(--light-bg-secondary);
-            border: 2px solid var(--primary-medium);
-        }
-        
-        .player-card.active {
-            border-color: #fbbc05;
-            box-shadow: 0 0 15px rgba(251, 188, 5, 0.5);
-        }
-        
-        .player-card.winner {
-            border-color: #34a853;
-            box-shadow: 0 0 15px rgba(52, 168, 83, 0.5);
-        }
-        
-        .player-name {
-            font-size: 1.2rem;
-            font-weight: 700;
-            margin-bottom: 10px;
-            color: var(--primary-light);
-        }
-        
-        .player-score {
-            font-size: 1.5rem;
-            font-weight: 800;
-            margin: 10px 0;
-            color: var(--text-primary);
-        }
-        
-        body.light-mode .player-score {
-            color: var(--light-text-primary);
-        }
-        
-        .player-score.winner {
-            color: #34a853;
-        }
-        
-        .player-cards-count {
-            font-size: 1.1rem;
-            margin: 10px 0;
-            color: var(--text-secondary);
-        }
-        
-        body.light-mode .player-cards-count {
-            color: var(--light-text-secondary);
-        }
-        
-        .player-actions {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-top: 15px;
-        }
-        
-        .game-controls {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 15px;
-            margin: 20px 0;
-        }
-        
-        button {
-            background-color: var(--primary-medium);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 4px;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            font-weight: 600;
-        }
-        
-        button:hover {
-            background-color: var(--primary-light);
-        }
-        
-        button:disabled {
-            background-color: var(--gray-medium);
-            cursor: not-allowed;
-        }
-        
-        body.light-mode button:disabled {
-            background-color: #b0b0b0;
-        }
-        
-        .secondary-btn {
-            background-color: var(--gray-medium);
-        }
-        
-        .secondary-btn:hover {
-            background-color: var(--gray-dark);
-        }
-        
-        body.light-mode .secondary-btn {
-            background-color: #e0e0e0;
-            color: #5f6368;
-        }
-        
-        body.light-mode .secondary-btn:hover {
-            background-color: #d0d0d0;
-        }
-        
-        .theme-toggle {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: var(--bg-light);
-            border: 1px solid var(--gray-medium);
-            border-radius: 20px;
-            padding: 8px 16px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            color: var(--text-primary);
-        }
-
-        body.light-mode .theme-toggle {
-            background: var(--light-bg-secondary);
-            border: 1px solid var(--light-border);
-            color: var(--light-text-primary);
-        }
-        
-        .cards-container {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin: 20px 0;
-            flex-wrap: wrap;
-        }
-        
-        .card {
-            width: 70px;
-            height: 100px;
-            background-color: white;
-            border-radius: 6px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.3rem;
-            font-weight: bold;
-            color: var(--gray-dark);
-            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
-            position: relative;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
-        }
-        
-        .card.selected {
-            transform: translateY(-10px);
-            box-shadow: 0 8px 20px rgba(66, 133, 91, 0.5);
-            border: 2px solid var(--primary-light);
-        }
-        
-        .card.in-equation {
-            background-color: #e8f5e9;
-        }
-        
-        .card.red {
-            color: #d32f2f;
-        }
-        
-        .card.black {
-            color: #212121;
-        }
-        
-        .card-value {
-            font-size: 1.5rem;
-            font-weight: 700;
-        }
-        
-        .card-suit {
-            font-size: 1rem;
-            position: absolute;
-            top: 5px;
-            left: 5px;
-        }
-        
-        .card-suit.bottom {
-            top: auto;
-            left: auto;
-            bottom: 5px;
-            right: 5px;
-            transform: rotate(180deg);
-        }
-        
-        .equation-builder {
-            background-color: var(--bg-light);
-            padding: 20px;
-            border-radius: 8px;
-            margin: 20px 0;
-        }
-        
-        body.light-mode .equation-builder {
-            background-color: var(--light-bg-secondary);
-        }
-        
-        .player-equation {
-            margin-bottom: 30px;
-        }
-        
-        .player-equation-header {
-            text-align: center;
-            margin-bottom: 15px;
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: var(--primary-light);
-        }
-        
-        .equation-display {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            margin: 15px 0;
-            flex-wrap: wrap;
-        }
-        
-        .number-slot {
-            width: 60px;
-            height: 80px;
-            border: 2px dashed var(--gray-medium);
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            font-weight: bold;
-            transition: all 0.3s ease;
-        }
-        
-        .number-slot.filled {
-            border: 2px solid var(--primary-medium);
-            background-color: rgba(56, 142, 60, 0.1);
-        }
-        
-        .number-slot.highlight {
-            border-color: #fbbc05;
-            background-color: rgba(251, 188, 5, 0.1);
-        }
-        
-        .operator {
-            font-size: 2rem;
-            font-weight: bold;
-            margin: 0 10px;
-            color: var(--primary-light);
-        }
-        
-        .equals {
-            font-size: 2rem;
-            font-weight: bold;
-            margin: 0 10px;
-            color: var(--primary-light);
-        }
-        
-        .result {
-            font-size: 1.8rem;
-            font-weight: bold;
-            color: var(--text-primary);
-            min-width: 80px;
-            text-align: center;
-        }
-        
-        body.light-mode .result {
-            color: var(--light-text-primary);
-        }
-        
-        .difference-display {
-            font-size: 1.5rem;
-            margin: 15px 0;
-            color: var(--text-primary);
-            text-align: center;
-            font-weight: 600;
-        }
-        
-        body.light-mode .difference-display {
-            color: var(--light-text-primary);
-        }
-        
-        .difference-display.winner {
-            color: #34a853;
-        }
-        
-        .slot-container {
-            display: flex;
-            gap: 5px;
-            justify-content: center;
-        }
-        
-        .game-log {
-            background-color: var(--bg-light);
-            padding: 15px;
-            border-radius: 8px;
-            max-height: 200px;
-            overflow-y: auto;
-            margin-top: 20px;
-        }
-        
-        body.light-mode .game-log {
-            background-color: var(--light-bg-secondary);
-        }
-        
-        .log-entry {
-            padding: 5px 0;
-            border-bottom: 1px solid var(--gray-medium);
-        }
-        
-        body.light-mode .log-entry {
-            border-bottom: 1px solid var(--light-border);
-        }
-        
-        .player-turn {
-            text-align: center;
-            margin: 15px 0;
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: var(--primary-light);
-        }
-        
-        .settings-panel {
-            background-color: var(--bg-light);
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-        
-        body.light-mode .settings-panel {
-            background-color: var(--light-bg-secondary);
-        }
-        
-        .settings-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
-        }
-        
-        .setting-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        
-        label {
-            font-weight: 600;
-            color: var(--text-secondary);
-        }
-        
-        body.light-mode label {
-            color: var(--light-text-secondary);
-        }
-        
-        select, input {
-            background-color: var(--bg-medium);
-            color: var(--text-primary);
-            border: 1px solid var(--gray-medium);
-            border-radius: 4px;
-            padding: 8px 12px;
-            font-size: 1rem;
-        }
-        
-        body.light-mode select, body.light-mode input {
-            background-color: white;
-            color: var(--light-text-primary);
-            border: 1px solid var(--light-border);
-        }
-        
-        footer {
-            text-align: center;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid var(--gray-medium);
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
-        
-        body.light-mode footer {
-            border-top: 1px solid var(--light-border);
-            color: var(--light-text-secondary);
-        }
-        
-        .deck-info {
-            text-align: center;
-            margin: 15px 0;
-            font-size: 1.1rem;
-        }
-        
-        .win-message {
-            text-align: center;
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #34a853;
-            margin: 20px 0;
-            padding: 15px;
-            background-color: rgba(52, 168, 83, 0.1);
-            border-radius: 8px;
-        }
-        
-        .card-selection-info {
-            text-align: center;
-            margin: 10px 0;
-            font-size: 1.1rem;
-            color: var(--text-secondary);
-        }
-        
-        body.light-mode .card-selection-info {
-            color: var(--light-text-secondary);
-        }
-        
-        .round-results {
-            background-color: var(--bg-light);
-            padding: 15px;
-            border-radius: 8px;
-            margin: 15px 0;
-            text-align: center;
-        }
-        
-        body.light-mode .round-results {
-            background-color: var(--light-bg-secondary);
-        }
-        
-        .round-winner {
-            font-size: 1.3rem;
-            font-weight: 700;
-            margin: 10px 0;
-            color: var(--primary-light);
-        }
-        
-        .equation-instructions {
-            text-align: center;
-            margin: 10px 0;
-            color: var(--text-secondary);
-            font-style: italic;
-        }
-        
-        body.light-mode .equation-instructions {
-            color: var(--light-text-secondary);
-        }
-        
-        .battle-result {
-            text-align: center;
-            font-size: 1.4rem;
-            font-weight: 700;
-            margin: 20px 0;
-            padding: 15px;
-            border-radius: 8px;
-            background-color: rgba(255, 152, 0, 0.1);
-            color: var(--secondary-medium);
-        }
-        
-        @media (max-width: 768px) {
-            .game-setup {
-                grid-template-columns: 1fr;
-            }
+            // Reset game state
+            players = [];
+            currentPlayerIndex = 0;
+            gameActive = true;
+            roundActive = false;
+            playerDecks = [];
+            playerHands = [];
+            selectedCard = null;
+            playerEquations = [];
+            battleCompleted = false;
             
-            .container {
-                padding: 15px;
-            }
+            // Clear containers
+            playersContainer.innerHTML = '';
+            cardsContainer.innerHTML = '';
+            battleResult.style.display = 'none';
+            winMessage.style.display = 'none';
+            nextRoundBtn.style.display = 'none';
+            clearAllEquations();
             
-            .players-container {
-                grid-template-columns: 1fr;
-            }
-            
-            .game-controls {
-                flex-direction: column;
-                align-items: center;
-            }
-            
-            .settings-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .theme-toggle {
-                position: relative;
-                top: 0;
-                right: 0;
-                margin-bottom: 20px;
-                align-self: flex-end;
-            }
-            
-            .card {
-                width: 60px;
-                height: 85px;
-            }
-            
-            .number-slot {
-                width: 50px;
-                height: 70px;
-            }
-            
-            .equation-display {
-                gap: 5px;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <button class="theme-toggle" id="themeToggle">
-            <span>🌙 Dark Mode</span>
-        </button>
-        
-        <header>
-            <h1>Subtraction War</h1>
-            <p class="subtitle">A card battle game where the greatest difference wins all the cards!</p>
-        </header>
-        
-        <section class="settings-panel">
-            <h2>Game Settings</h2>
-            <div class="settings-grid">
-                <div class="setting-group">
-                    <label for="playerCount">Number of Players:</label>
-                    <select id="playerCount">
-                        <option value="2" selected>2 Players</option>
-                        <option value="3">3 Players</option>
-                        <option value="4">4 Players</option>
-                    </select>
-                </div>
+            // Create players
+            for (let i = 0; i < playerCount; i++) {
+                players.push({
+                    id: i + 1,
+                    name: `Player ${i + 1}`,
+                    cards: 0,
+                    wins: 0,
+                    hasWon: false,
+                    equationComplete: false
+                });
                 
-                <div class="setting-group">
-                    <label for="digitCount">Number of Digits:</label>
-                    <select id="digitCount">
-                        <option value="2" selected>2 Digits</option>
-                        <option value="3">3 Digits</option>
-                        <option value="4">4 Digits</option>
-                    </select>
-                </div>
+                const playerCard = document.createElement('div');
+                playerCard.className = 'player-card';
+                playerCard.id = `playerCard${i + 1}`;
                 
-                <div class="setting-group">
-                    <label for="cardsPerPlayer">Cards Per Player:</label>
-                    <select id="cardsPerPlayer">
-                        <option value="4" selected>4 Cards</option>
-                        <option value="6">6 Cards</option>
-                        <option value="8">8 Cards</option>
-                    </select>
-                </div>
+                const playerName = document.createElement('div');
+                playerName.className = 'player-name';
+                playerName.textContent = `Player ${i + 1}`;
                 
-                <div class="setting-group">
-                    <label for="faceCards">Face Cards:</label>
-                    <select id="faceCards">
-                        <option value="remove" selected>Remove Face Cards & 10s</option>
-                        <option value="include">Include All Cards</option>
-                    </select>
-                </div>
+                const playerScore = document.createElement('div');
+                playerScore.className = 'player-score';
+                playerScore.id = `playerScore${i + 1}`;
+                playerScore.textContent = '0 Cards';
                 
-                <div class="setting-group">
-                    <label for="aceValue">Ace Value:</label>
-                    <select id="aceValue">
-                        <option value="1" selected>1</option>
-                        <option value="0">0</option>
-                    </select>
-                </div>
+                const playerCardsCount = document.createElement('div');
+                playerCardsCount.className = 'player-cards-count';
+                playerCardsCount.id = `playerCardsCount${i + 1}`;
+                playerCardsCount.textContent = 'Wins: 0';
                 
-                <div class="setting-group">
-                    <button id="applySettings" class="secondary-btn">Apply Settings</button>
-                </div>
-            </div>
-        </section>
-        
-        <section>
-            <h2>Interactive Game</h2>
-            <div class="player-turn" id="playerTurn">Arrange your cards to create the greatest difference!</div>
-            
-            <div class="deck-info" id="deckInfo">Cards in play: 8</div>
-            
-            <div class="card-selection-info" id="cardSelectionInfo">
-                Select a card, then click where you want to place it in your subtraction problem.
-            </div>
-            
-            <div class="cards-container" id="cardsContainer">
-                <!-- Cards will be added here by JavaScript -->
-            </div>
-            
-            <div class="equation-builder" id="equationBuilder">
-                <div class="player-equation" id="player1Equation">
-                    <div class="player-equation-header">Player 1's Equation</div>
-                    <div class="equation-display">
-                        <div class="slot-container" id="player1MinuendSlots">
-                            <!-- Player 1 minuend slots will be added here -->
-                        </div>
-                        <div class="operator">−</div>
-                        <div class="slot-container" id="player1SubtrahendSlots">
-                            <!-- Player 1 subtrahend slots will be added here -->
-                        </div>
-                        <div class="equals">=</div>
-                        <div class="result" id="player1Result">?</div>
-                    </div>
-                    <div class="difference-display" id="player1Difference"></div>
-                </div>
+                // Add player switch button
+                const switchButton = document.createElement('button');
+                switchButton.className = 'secondary-btn';
+                switchButton.textContent = 'Build Equation';
+                switchButton.style.marginTop = '10px';
+                switchButton.style.fontSize = '0.9rem';
+                switchButton.style.padding = '8px 16px';
+                switchButton.addEventListener('click', () => switchToPlayer(i));
                 
-                <div class="player-equation" id="player2Equation">
-                    <div class="player-equation-header">Player 2's Equation</div>
-                    <div class="equation-display">
-                        <div class="slot-container" id="player2MinuendSlots">
-                            <!-- Player 2 minuend slots will be added here -->
-                        </div>
-                        <div class="operator">−</div>
-                        <div class="slot-container" id="player2SubtrahendSlots">
-                            <!-- Player 2 subtrahend slots will be added here -->
-                        </div>
-                        <div class="equals">=</div>
-                        <div class="result" id="player2Result">?</div>
-                    </div>
-                    <div class="difference-display" id="player2Difference"></div>
-                </div>
+                const playerActions = document.createElement('div');
+                playerActions.className = 'player-actions';
+                playerActions.appendChild(switchButton);
                 
-                <div id="battleResult" class="battle-result" style="display: none;"></div>
-            </div>
+                playerCard.appendChild(playerName);
+                playerCard.appendChild(playerScore);
+                playerCard.appendChild(playerCardsCount);
+                playerCard.appendChild(playerActions);
+                playersContainer.appendChild(playerCard);
+            }
             
-            <div class="game-controls">
-                <button id="dealBtn">Deal Cards</button>
-                <button id="battleBtn" disabled>Battle!</button>
-                <button id="clearEquationBtn" class="secondary-btn">Clear My Equation</button>
-                <button id="nextRoundBtn" class="secondary-btn" style="display: none;">Next Round</button>
-                <button id="resetGameBtn" class="secondary-btn">Reset Game</button>
-            </div>
+            // Create and shuffle deck
+            createDeck();
+            shuffleDeck();
             
-            <div id="winMessage" class="win-message" style="display: none;"></div>
+            // Initialize player decks
+            initializePlayerDecks();
             
-            <div class="players-container" id="playersContainer">
-                <!-- Player cards will be added here by JavaScript -->
-            </div>
+            // Update UI
+            updatePlayerTurn();
+            updateDeckInfo();
+            clearGameLog();
+            addToLog(`Game started with ${playerCount} players.`);
+            addToLog(`Deal cards to begin the battle!`);
             
-            <div class="game-log" id="gameLog">
-                <div class="log-entry">Game started. Deal cards to begin!</div>
-            </div>
-        </section>
+            // Reset buttons
+            dealBtn.disabled = false;
+            battleBtn.disabled = true;
+        }
         
-        <section>
-            <h2>About the Game</h2>
-            <p>"Subtraction War" is an exciting math battle game where players create subtraction problems with the goal of achieving the greatest difference. The player with the largest difference wins all the cards in that round!</p>
-        </section>
-        
-        <section class="instructions">
-            <h2>How to Play</h2>
-            <ol>
-                <li>Each player is dealt the same number of cards (usually 4 for 2-digit numbers).</li>
-                <li>Players arrange their cards to create a subtraction problem with the largest possible difference.</li>
-                <li>The minuend (first number) must be larger than the subtrahend (second number).</li>
-                <li>When both players are ready, they reveal their equations.</li>
-                <li>The player with the greatest difference wins all the cards from that round.</li>
-                <li>If there's a tie, each player keeps their own cards.</li>
-                <li>The game continues until one player has all the cards or a predetermined number of rounds.</li>
-            </ol>
-        </section>
-        
-        <section>
-            <h2>Game Setup</h2>
-            <div class="game-setup">
-                <div class="setup-card">
-                    <h3>Materials Needed</h3>
-                    <ul>
-                        <li>Standard deck of playing cards</li>
-                        <li>Paper and pencil for scorekeeping (optional)</li>
-                    </ul>
-                </div>
-                
-                <div class="setup-card">
-                    <h3>Preparation</h3>
-                    <ul>
-                        <li>Remove face cards and 10s (or use all cards for advanced play)</li>
-                        <li>Decide on ace value (1 or 0)</li>
-                        <li>Shuffle the deck thoroughly</li>
-                        <li>Deal equal stacks to each player</li>
-                    </ul>
-                </div>
-            </div>
-        </section>
-        
-        <section class="example">
-            <h3>Example Gameplay</h3>
-            <p><strong>Player 1 draws:</strong> 8, 4, 2, 7</p>
-            <p><strong>Player 1 creates:</strong> 84 - 27 = 57</p>
-            <p><strong>Player 2 draws:</strong> 9, 1, 6, 5</p>
-            <p><strong>Player 2 creates:</strong> 96 - 15 = 81</p>
-            <p><strong>Result:</strong> Player 2 wins with a difference of 81 (greater than 57) and takes all 8 cards!</p>
-        </section>
-        
-        <section class="variations">
-            <h2>Game Variations</h2>
-            <ul>
-                <li><strong>Addition War:</strong> Create addition problems with the largest sum</li>
-                <li><strong>Multiplication War:</strong> Create multiplication problems with the largest product</li>
-                <li><strong>Target War:</strong> Aim for a specific difference (like 50)</li>
-                <li><strong>Three-Player War:</strong> All three players battle, winner takes all cards</li>
-                <li><strong>Place Value Challenge:</strong> Require specific place value arrangements</li>
-            </ul>
-        </section>
-        
-        <section>
-            <h2>Educational Benefits</h2>
-            <ul>
-                <li>Reinforces multi-digit subtraction skills</li>
-                <li>Develops strategic thinking about number placement</li>
-                <li>Enhances understanding of place value</li>
-                <li>Encourages mental math and estimation</li>
-                <li>Promotes competitive mathematical reasoning</li>
-            </ul>
-        </section>
-        
-        <footer>
-            <p>Subtraction War - A strategic math battle game for practicing subtraction skills</p>
-        </footer>
-    </div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Game state
-            let players = [];
-            let currentPlayerIndex = 0;
-            let gameActive = true;
-            let roundActive = false;
-            let deck = [];
-            let playerDecks = [];
-            let playerHands = [];
-            let selectedCard = null;
-            let playerEquations = [];
-            let battleCompleted = false;
+        // Switch to a specific player for equation building
+        function switchToPlayer(playerIndex) {
+            if (!roundActive || battleCompleted) return;
             
-            // DOM elements
-            const playersContainer = document.getElementById('playersContainer');
-            const cardsContainer = document.getElementById('cardsContainer');
-            const playerTurn = document.getElementById('playerTurn');
-            const deckInfo = document.getElementById('deckInfo');
-            const cardSelectionInfo = document.getElementById('cardSelectionInfo');
-            const equationBuilder = document.getElementById('equationBuilder');
-            const player1MinuendSlots = document.getElementById('player1MinuendSlots');
-            const player1SubtrahendSlots = document.getElementById('player1SubtrahendSlots');
-            const player1Result = document.getElementById('player1Result');
-            const player1Difference = document.getElementById('player1Difference');
-            const player2MinuendSlots = document.getElementById('player2MinuendSlots');
-            const player2SubtrahendSlots = document.getElementById('player2SubtrahendSlots');
-            const player2Result = document.getElementById('player2Result');
-            const player2Difference = document.getElementById('player2Difference');
-            const battleResult = document.getElementById('battleResult');
-            const dealBtn = document.getElementById('dealBtn');
-            const battleBtn = document.getElementById('battleBtn');
-            const clearEquationBtn = document.getElementById('clearEquationBtn');
-            const nextRoundBtn = document.getElementById('nextRoundBtn');
-            const resetGameBtn = document.getElementById('resetGameBtn');
-            const gameLog = document.getElementById('gameLog');
-            const winMessage = document.getElementById('winMessage');
-            const playerCountSelect = document.getElementById('playerCount');
-            const digitCountSelect = document.getElementById('digitCount');
-            const cardsPerPlayerSelect = document.getElementById('cardsPerPlayer');
-            const faceCardsSelect = document.getElementById('faceCards');
-            const aceValueSelect = document.getElementById('aceValue');
-            const applySettingsBtn = document.getElementById('applySettings');
-            const themeToggle = document.getElementById('themeToggle');
+            currentPlayerIndex = playerIndex;
+            displayPlayerCards(playerIndex);
+            updatePlayerTurn();
+            updateCardSelectionInfo();
             
-            // Theme toggle functionality
-            let isLightMode = false;
-            themeToggle.addEventListener('click', function() {
-                isLightMode = !isLightMode;
-                document.body.classList.toggle('light-mode', isLightMode);
-                themeToggle.innerHTML = isLightMode ? 
-                    '<span>☀️ Light Mode</span>' : 
-                    '<span>🌙 Dark Mode</span>';
+            // Highlight the current player
+            document.querySelectorAll('.player-card').forEach((card, index) => {
+                if (index === playerIndex) {
+                    card.classList.add('active');
+                } else {
+                    card.classList.remove('active');
+                }
             });
             
-            // Initialize the game
-            function initializeGame() {
-                const playerCount = parseInt(playerCountSelect.value);
-                const digitCount = parseInt(digitCountSelect.value);
-                const cardsPerPlayer = parseInt(cardsPerPlayerSelect.value);
+            addToLog(`${players[playerIndex].name} is now building their equation.`);
+        }
+        
+        // Create a deck of cards based on settings
+        function createDeck() {
+            deck = [];
+            const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
+            let values = ['A', '2', '3', '4', '5', '6', '7', '8', '9'];
+            const faceCardsSetting = faceCardsSelect.value;
+            const aceValue = parseInt(aceValueSelect.value);
+            
+            // Add 10s and face cards if included
+            if (faceCardsSetting === 'include') {
+                values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+            }
+            
+            // Add number cards
+            for (let suit of suits) {
+                for (let value of values) {
+                    let numericValue;
+                    
+                    if (value === 'A') {
+                        numericValue = aceValue;
+                    } else if (value === 'J') {
+                        numericValue = 11;
+                    } else if (value === 'Q') {
+                        numericValue = 12;
+                    } else if (value === 'K') {
+                        numericValue = 13;
+                    } else {
+                        numericValue = parseInt(value);
+                    }
+                    
+                    deck.push({
+                        suit: suit,
+                        value: value,
+                        numericValue: numericValue,
+                        isWild: false
+                    });
+                }
+            }
+        }
+        
+        // Shuffle the deck using Fisher-Yates algorithm
+        function shuffleDeck() {
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+        }
+        
+        // Initialize player decks by splitting the deck
+        function initializePlayerDecks() {
+            const playerCount = parseInt(playerCountSelect.value);
+            playerDecks = [];
+            
+            // Calculate cards per player (roughly equal)
+            const cardsPerPlayer = Math.floor(deck.length / playerCount);
+            
+            for (let i = 0; i < playerCount; i++) {
+                const playerDeck = [];
+                const startIndex = i * cardsPerPlayer;
+                const endIndex = (i === playerCount - 1) ? deck.length : (i + 1) * cardsPerPlayer;
                 
-                // Reset game state
-                players = [];
-                currentPlayerIndex = 0;
-                gameActive = true;
-                roundActive = false;
-                playerDecks = [];
-                playerHands = [];
-                selectedCard = null;
-                playerEquations = [];
-                battleCompleted = false;
+                for (let j = startIndex; j < endIndex; j++) {
+                    playerDeck.push(deck[j]);
+                }
                 
-                // Clear containers
-                playersContainer.innerHTML = '';
-                cardsContainer.innerHTML = '';
-                battleResult.style.display = 'none';
-                winMessage.style.display = 'none';
-                nextRoundBtn.style.display = 'none';
-                clearAllEquations();
+                playerDecks.push(playerDeck);
+                players[i].cards = playerDeck.length;
+            }
+            
+            updatePlayerCardCounts();
+        }
+        
+        // Deal cards to players
+        function dealCards() {
+            if (!gameActive || roundActive) return;
+            
+            const cardsPerPlayer = parseInt(cardsPerPlayerSelect.value);
+            const playerCount = parseInt(playerCountSelect.value);
+            
+            // Check if players have enough cards
+            for (let i = 0; i < playerCount; i++) {
+                if (playerDecks[i].length < cardsPerPlayer) {
+                    addToLog(`Player ${i+1} doesn't have enough cards! Game over.`);
+                    endGame();
+                    return;
+                }
+            }
+            
+            // Deal cards to each player
+            playerHands = [];
+            for (let i = 0; i < playerCount; i++) {
+                const hand = [];
+                for (let j = 0; j < cardsPerPlayer; j++) {
+                    if (playerDecks[i].length > 0) {
+                        hand.push(playerDecks[i].pop());
+                    }
+                }
+                playerHands.push(hand);
+                players[i].cards = playerDecks[i].length;
+            }
+            
+            // Initialize equations
+            playerEquations = [];
+            for (let i = 0; i < playerCount; i++) {
+                playerEquations.push({ minuend: [], subtrahend: [] });
+                players[i].equationComplete = false;
+            }
+            
+            // Display first player's cards
+            currentPlayerIndex = 0;
+            displayPlayerCards(currentPlayerIndex);
+            
+            addToLog(`Cards dealt! Each player has ${cardsPerPlayer} cards.`);
+            addToLog(`${players[currentPlayerIndex].name}, arrange your cards to create the greatest difference!`);
+            addToLog(`Use the "Build Equation" buttons to switch between players.`);
+            
+            // Enable equation builder
+            dealBtn.disabled = true;
+            battleBtn.disabled = true;
+            createEquationSlots();
+            roundActive = true;
+            
+            updateDeckInfo();
+            updatePlayerCardCounts();
+            updateCardSelectionInfo();
+            updatePlayerTurn();
+        }
+        
+        // Display cards for a specific player
+        function displayPlayerCards(playerIndex) {
+            cardsContainer.innerHTML = '';
+            selectedCard = null;
+            
+            const hand = playerHands[playerIndex];
+            if (!hand) return;
+            
+            hand.forEach((card, index) => {
+                const cardElement = createCardElement(card, index, playerIndex);
+                cardsContainer.appendChild(cardElement);
+            });
+        }
+        
+        // Create a visual card element
+        function createCardElement(card, index, playerIndex) {
+            const cardElement = document.createElement('div');
+            const isRed = card.suit === 'hearts' || card.suit === 'diamonds';
+            cardElement.className = `card ${isRed ? 'red' : 'black'} ${card.isWild ? 'wild' : ''}`;
+            cardElement.dataset.index = index;
+            cardElement.dataset.player = playerIndex;
+            
+            const suitSymbol = getSuitSymbol(card.suit);
+            
+            cardElement.innerHTML = `
+                <div class="card-suit">${suitSymbol}</div>
+                <div class="card-value">${card.value}</div>
+                <div class="card-suit bottom">${suitSymbol}</div>
+            `;
+            
+            // Check if card is already used in equation
+            if (isCardUsed(playerIndex, card)) {
+                cardElement.classList.add('in-equation');
+            }
+            
+            // Add click event for card selection
+            cardElement.addEventListener('click', function() {
+                if (!roundActive || battleCompleted) return;
+                if (parseInt(this.dataset.player) !== currentPlayerIndex) return;
                 
-                // Create players
-                for (let i = 0; i < playerCount; i++) {
-                    players.push({
-                        id: i + 1,
-                        name: `Player ${i + 1}`,
-                        cards: 0,
-                        wins: 0,
-                        hasWon: false
+                // Deselect previously selected card
+                if (selectedCard !== null) {
+                    const prevCard = document.querySelector(`.card[data-index="${selectedCard}"][data-player="${currentPlayerIndex}"]`);
+                    if (prevCard) prevCard.classList.remove('selected');
+                }
+                
+                // Select this card
+                this.classList.add('selected');
+                selectedCard = index;
+                
+                updateCardSelectionInfo();
+            });
+            
+            return cardElement;
+        }
+        
+        // Get Unicode symbol for card suit
+        function getSuitSymbol(suit) {
+            switch(suit) {
+                case 'hearts': return '♥';
+                case 'diamonds': return '♦';
+                case 'clubs': return '♣';
+                case 'spades': return '♠';
+                default: return '';
+            }
+        }
+        
+        // Create equation slots for all players
+        function createEquationSlots() {
+            const digitCount = parseInt(digitCountSelect.value);
+            const playerCount = parseInt(playerCountSelect.value);
+            
+            // Clear existing slots
+            player1MinuendSlots.innerHTML = '';
+            player1SubtrahendSlots.innerHTML = '';
+            player2MinuendSlots.innerHTML = '';
+            player2SubtrahendSlots.innerHTML = '';
+            
+            // Create slots for each player
+            for (let playerIndex = 0; playerIndex < playerCount; playerIndex++) {
+                const minuendSlots = document.getElementById(`player${playerIndex+1}MinuendSlots`);
+                const subtrahendSlots = document.getElementById(`player${playerIndex+1}SubtrahendSlots`);
+                
+                // Create minuend slots
+                for (let i = 0; i < digitCount; i++) {
+                    const slot = document.createElement('div');
+                    slot.className = 'number-slot';
+                    slot.dataset.position = i;
+                    slot.dataset.type = 'minuend';
+                    slot.dataset.player = playerIndex;
+                    
+                    slot.addEventListener('click', function() {
+                        if (selectedCard !== null && parseInt(this.dataset.player) === currentPlayerIndex) {
+                            placeCardInSlot(playerIndex, 'minuend', i);
+                        } else if (parseInt(this.dataset.player) === currentPlayerIndex) {
+                            this.classList.add('highlight');
+                            setTimeout(() => this.classList.remove('highlight'), 500);
+                        }
                     });
                     
-                    const playerCard = document.createElement('div');
-                    playerCard.className = 'player-card';
-                    playerCard.id = `playerCard${i + 1}`;
-                    
-                    const playerName = document.createElement('div');
-                    playerName.className = 'player-name';
-                    playerName.textContent = `Player ${i + 1}`;
-                    
-                    const playerScore = document.createElement('div');
-                    playerScore.className = 'player-score';
-                    playerScore.id = `playerScore${i + 1}`;
-                    playerScore.textContent = '0 Cards';
-                    
-                    const playerCardsCount = document.createElement('div');
-                    playerCardsCount.className = 'player-cards-count';
-                    playerCardsCount.id = `playerCardsCount${i + 1}`;
-                    playerCardsCount.textContent = 'Wins: 0';
-                    
-                    const playerActions = document.createElement('div');
-                    playerActions.className = 'player-actions';
-                    
-                    playerCard.appendChild(playerName);
-                    playerCard.appendChild(playerScore);
-                    playerCard.appendChild(playerCardsCount);
-                    playerCard.appendChild(playerActions);
-                    playersContainer.appendChild(playerCard);
+                    minuendSlots.appendChild(slot);
                 }
                 
-                // Create and shuffle deck
-                createDeck();
-                shuffleDeck();
-                
-                // Initialize player decks
-                initializePlayerDecks();
-                
-                // Update UI
-                updatePlayerTurn();
-                updateDeckInfo();
-                clearGameLog();
-                addToLog(`Game started with ${playerCount} players.`);
-                addToLog(`Deal cards to begin the battle!`);
-                
-                // Reset buttons
-                dealBtn.disabled = false;
-                battleBtn.disabled = true;
-            }
-            
-            // Create a deck of cards based on settings
-            function createDeck() {
-                deck = [];
-                const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
-                let values = ['A', '2', '3', '4', '5', '6', '7', '8', '9'];
-                const faceCardsSetting = faceCardsSelect.value;
-                const aceValue = parseInt(aceValueSelect.value);
-                
-                // Add 10s and face cards if included
-                if (faceCardsSetting === 'include') {
-                    values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-                }
-                
-                // Add number cards
-                for (let suit of suits) {
-                    for (let value of values) {
-                        let numericValue;
-                        
-                        if (value === 'A') {
-                            numericValue = aceValue;
-                        } else if (value === 'J') {
-                            numericValue = 11;
-                        } else if (value === 'Q') {
-                            numericValue = 12;
-                        } else if (value === 'K') {
-                            numericValue = 13;
-                        } else {
-                            numericValue = parseInt(value);
+                // Create subtrahend slots
+                for (let i = 0; i < digitCount; i++) {
+                    const slot = document.createElement('div');
+                    slot.className = 'number-slot';
+                    slot.dataset.position = i;
+                    slot.dataset.type = 'subtrahend';
+                    slot.dataset.player = playerIndex;
+                    
+                    slot.addEventListener('click', function() {
+                        if (selectedCard !== null && parseInt(this.dataset.player) === currentPlayerIndex) {
+                            placeCardInSlot(playerIndex, 'subtrahend', i);
+                        } else if (parseInt(this.dataset.player) === currentPlayerIndex) {
+                            this.classList.add('highlight');
+                            setTimeout(() => this.classList.remove('highlight'), 500);
                         }
-                        
-                        deck.push({
-                            suit: suit,
-                            value: value,
-                            numericValue: numericValue,
-                            isWild: false
-                        });
-                    }
-                }
-            }
-            
-            // Shuffle the deck using Fisher-Yates algorithm
-            function shuffleDeck() {
-                for (let i = deck.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [deck[i], deck[j]] = [deck[j], deck[i]];
-                }
-            }
-            
-            // Initialize player decks by splitting the deck
-            function initializePlayerDecks() {
-                const playerCount = parseInt(playerCountSelect.value);
-                playerDecks = [];
-                
-                // Calculate cards per player (roughly equal)
-                const cardsPerPlayer = Math.floor(deck.length / playerCount);
-                
-                for (let i = 0; i < playerCount; i++) {
-                    const playerDeck = [];
-                    const startIndex = i * cardsPerPlayer;
-                    const endIndex = (i === playerCount - 1) ? deck.length : (i + 1) * cardsPerPlayer;
+                    });
                     
-                    for (let j = startIndex; j < endIndex; j++) {
-                        playerDeck.push(deck[j]);
-                    }
-                    
-                    playerDecks.push(playerDeck);
-                    players[i].cards = playerDeck.length;
-                }
-                
-                updatePlayerCardCounts();
-            }
-            
-            // Deal cards to players
-            function dealCards() {
-                if (!gameActive || roundActive) return;
-                
-                const cardsPerPlayer = parseInt(cardsPerPlayerSelect.value);
-                const playerCount = parseInt(playerCountSelect.value);
-                
-                // Check if players have enough cards
-                for (let i = 0; i < playerCount; i++) {
-                    if (playerDecks[i].length < cardsPerPlayer) {
-                        addToLog(`Player ${i+1} doesn't have enough cards! Game over.`);
-                        endGame();
-                        return;
-                    }
-                }
-                
-                // Deal cards to each player
-                playerHands = [];
-                for (let i = 0; i < playerCount; i++) {
-                    const hand = [];
-                    for (let j = 0; j < cardsPerPlayer; j++) {
-                        if (playerDecks[i].length > 0) {
-                            hand.push(playerDecks[i].pop());
-                        }
-                    }
-                    playerHands.push(hand);
-                    players[i].cards = playerDecks[i].length;
-                }
-                
-                // Initialize equations
-                playerEquations = [];
-                for (let i = 0; i < playerCount; i++) {
-                    playerEquations.push({ minuend: [], subtrahend: [] });
-                }
-                
-                // Display current player's cards
-                displayPlayerCards(currentPlayerIndex);
-                
-                addToLog(`Cards dealt! Each player has ${cardsPerPlayer} cards.`);
-                addToLog(`${players[currentPlayerIndex].name}, arrange your cards to create the greatest difference!`);
-                
-                // Enable equation builder
-                dealBtn.disabled = true;
-                battleBtn.disabled = true;
-                createEquationSlots();
-                roundActive = true;
-                
-                updateDeckInfo();
-                updatePlayerCardCounts();
-                updateCardSelectionInfo();
-            }
-            
-            // Display cards for a specific player
-            function displayPlayerCards(playerIndex) {
-                cardsContainer.innerHTML = '';
-                selectedCard = null;
-                
-                const hand = playerHands[playerIndex];
-                hand.forEach((card, index) => {
-                    const cardElement = createCardElement(card, index);
-                    cardsContainer.appendChild(cardElement);
-                });
-            }
-            
-            // Create a visual card element
-            function createCardElement(card, index) {
-                const cardElement = document.createElement('div');
-                const isRed = card.suit === 'hearts' || card.suit === 'diamonds';
-                cardElement.className = `card ${isRed ? 'red' : 'black'} ${card.isWild ? 'wild' : ''}`;
-                cardElement.dataset.index = index;
-                
-                const suitSymbol = getSuitSymbol(card.suit);
-                
-                cardElement.innerHTML = `
-                    <div class="card-suit">${suitSymbol}</div>
-                    <div class="card-value">${card.value}</div>
-                    <div class="card-suit bottom">${suitSymbol}</div>
-                `;
-                
-                // Add click event for card selection
-                cardElement.addEventListener('click', function() {
-                    if (!roundActive) return;
-                    
-                    // Deselect previously selected card
-                    if (selectedCard !== null) {
-                        const prevCard = document.querySelector(`.card[data-index="${selectedCard}"]`);
-                        if (prevCard) prevCard.classList.remove('selected');
-                    }
-                    
-                    // Select this card
-                    this.classList.add('selected');
-                    selectedCard = index;
-                    
-                    updateCardSelectionInfo();
-                });
-                
-                return cardElement;
-            }
-            
-            // Get Unicode symbol for card suit
-            function getSuitSymbol(suit) {
-                switch(suit) {
-                    case 'hearts': return '♥';
-                    case 'diamonds': return '♦';
-                    case 'clubs': return '♣';
-                    case 'spades': return '♠';
-                    default: return '';
+                    subtrahendSlots.appendChild(slot);
                 }
             }
+        }
+        
+        // Place a card in a slot
+        function placeCardInSlot(playerIndex, type, position) {
+            if (selectedCard === null || playerIndex !== currentPlayerIndex) return;
             
-            // Create equation slots for all players
-            function createEquationSlots() {
-                const digitCount = parseInt(digitCountSelect.value);
-                const playerCount = parseInt(playerCountSelect.value);
-                
-                // Clear existing slots
-                player1MinuendSlots.innerHTML = '';
-                player1SubtrahendSlots.innerHTML = '';
-                player2MinuendSlots.innerHTML = '';
-                player2SubtrahendSlots.innerHTML = '';
-                
-                // Create slots for each player
-                for (let playerIndex = 0; playerIndex < playerCount; playerIndex++) {
-                    const minuendSlots = document.getElementById(`player${playerIndex+1}MinuendSlots`);
-                    const subtrahendSlots = document.getElementById(`player${playerIndex+1}SubtrahendSlots`);
-                    
-                    // Create minuend slots
-                    for (let i = 0; i < digitCount; i++) {
-                        const slot = document.createElement('div');
-                        slot.className = 'number-slot';
-                        slot.dataset.position = i;
-                        slot.dataset.type = 'minuend';
-                        slot.dataset.player = playerIndex;
-                        
-                        slot.addEventListener('click', function() {
-                            if (selectedCard !== null && parseInt(this.dataset.player) === currentPlayerIndex) {
-                                placeCardInSlot(playerIndex, 'minuend', i);
-                            } else if (parseInt(this.dataset.player) === currentPlayerIndex) {
-                                this.classList.add('highlight');
-                                setTimeout(() => this.classList.remove('highlight'), 500);
-                            }
-                        });
-                        
-                        minuendSlots.appendChild(slot);
-                    }
-                    
-                    // Create subtrahend slots
-                    for (let i = 0; i < digitCount; i++) {
-                        const slot = document.createElement('div');
-                        slot.className = 'number-slot';
-                        slot.dataset.position = i;
-                        slot.dataset.type = 'subtrahend';
-                        slot.dataset.player = playerIndex;
-                        
-                        slot.addEventListener('click', function() {
-                            if (selectedCard !== null && parseInt(this.dataset.player) === currentPlayerIndex) {
-                                placeCardInSlot(playerIndex, 'subtrahend', i);
-                            } else if (parseInt(this.dataset.player) === currentPlayerIndex) {
-                                this.classList.add('highlight');
-                                setTimeout(() => this.classList.remove('highlight'), 500);
-                            }
-                        });
-                        
-                        subtrahendSlots.appendChild(slot);
+            const hand = playerHands[playerIndex];
+            const card = hand[selectedCard];
+            
+            // Check if the card is already used
+            if (isCardUsed(playerIndex, card)) {
+                alert('This card is already used in your equation!');
+                return;
+            }
+            
+            // Place the card in the equation
+            playerEquations[playerIndex][type][position] = card;
+            
+            // Update the slot display
+            const slot = document.querySelector(`.number-slot[data-player="${playerIndex}"][data-type="${type}"][data-position="${position}"]`);
+            slot.textContent = card.value;
+            slot.classList.add('filled');
+            
+            // Deselect the card and mark it as used
+            const cardElement = document.querySelector(`.card[data-index="${selectedCard}"][data-player="${playerIndex}"]`);
+            cardElement.classList.remove('selected');
+            cardElement.classList.add('in-equation');
+            selectedCard = null;
+            
+            // Update the equation result
+            updateEquationResult(playerIndex);
+            
+            // Check if this player's equation is complete
+            checkPlayerEquationComplete(playerIndex);
+            
+            // Check if all players have complete equations
+            checkAllEquationsComplete();
+        }
+        
+        // Check if a card is already used in a player's equation
+        function isCardUsed(playerIndex, card) {
+            for (let type of ['minuend', 'subtrahend']) {
+                for (let pos in playerEquations[playerIndex][type]) {
+                    if (playerEquations[playerIndex][type][pos] === card) {
+                        return true;
                     }
                 }
             }
+            return false;
+        }
+        
+        // Update the equation result display for a player
+        function updateEquationResult(playerIndex) {
+            const digitCount = parseInt(digitCountSelect.value);
+            const equation = playerEquations[playerIndex];
             
-            // Place a card in a slot
-            function placeCardInSlot(playerIndex, type, position) {
-                if (selectedCard === null || playerIndex !== currentPlayerIndex) return;
-                
-                const hand = playerHands[playerIndex];
-                const card = hand[selectedCard];
-                
-                // Check if the card is already used
-                if (isCardUsed(playerIndex, card)) {
-                    alert('This card is already used in your equation!');
-                    return;
-                }
-                
-                // Place the card in the equation
-                playerEquations[playerIndex][type][position] = card;
-                
-                // Update the slot display
-                const slot = document.querySelector(`.number-slot[data-player="${playerIndex}"][data-type="${type}"][data-position="${position}"]`);
-                slot.textContent = card.value;
-                slot.classList.add('filled');
-                
-                // Deselect the card
-                const cardElement = document.querySelector(`.card[data-index="${selectedCard}"]`);
-                cardElement.classList.remove('selected');
-                cardElement.classList.add('in-equation');
-                selectedCard = null;
-                
-                // Update the equation result
-                updateEquationResult(playerIndex);
-                
-                // Check if all players have complete equations
-                checkAllEquationsComplete();
+            // Check if both minuend and subtrahend are complete
+            if (equation.minuend.length !== digitCount || equation.subtrahend.length !== digitCount) {
+                document.getElementById(`player${playerIndex+1}Result`).textContent = '?';
+                document.getElementById(`player${playerIndex+1}Difference`).textContent = '';
+                return;
             }
             
-            // Check if a card is already used in a player's equation
-            function isCardUsed(playerIndex, card) {
-                for (let type of ['minuend', 'subtrahend']) {
-                    for (let pos in playerEquations[playerIndex][type]) {
-                        if (playerEquations[playerIndex][type][pos] === card) {
-                            return true;
-                        }
-                    }
-                }
-                return false;
+            // Build numbers from cards
+            let minuend = '';
+            let subtrahend = '';
+            
+            for (let i = 0; i < digitCount; i++) {
+                minuend += equation.minuend[i] ? equation.minuend[i].numericValue : '0';
+                subtrahend += equation.subtrahend[i] ? equation.subtrahend[i].numericValue : '0';
             }
             
-            // Update the equation result display for a player
-            function updateEquationResult(playerIndex) {
-                const digitCount = parseInt(digitCountSelect.value);
-                const equation = playerEquations[playerIndex];
-                
-                // Check if both minuend and subtrahend are complete
-                if (equation.minuend.length !== digitCount || equation.subtrahend.length !== digitCount) {
-                    document.getElementById(`player${playerIndex+1}Result`).textContent = '?';
-                    document.getElementById(`player${playerIndex+1}Difference`).textContent = '';
-                    return;
-                }
-                
-                // Build numbers from cards
+            const minuendNum = parseInt(minuend);
+            const subtrahendNum = parseInt(subtrahend);
+            
+            // Validate that minuend is greater than subtrahend
+            if (minuendNum <= subtrahendNum) {
+                document.getElementById(`player${playerIndex+1}Result`).textContent = 'Invalid';
+                document.getElementById(`player${playerIndex+1}Difference`).textContent = 'Minuend must be greater than subtrahend';
+                players[playerIndex].equationComplete = false;
+                return;
+            }
+            
+            const difference = minuendNum - subtrahendNum;
+            document.getElementById(`player${playerIndex+1}Result`).textContent = difference;
+            document.getElementById(`player${playerIndex+1}Difference`).textContent = `Difference: ${difference}`;
+        }
+        
+        // Check if a specific player's equation is complete
+        function checkPlayerEquationComplete(playerIndex) {
+            const digitCount = parseInt(digitCountSelect.value);
+            const equation = playerEquations[playerIndex];
+            
+            const minuendComplete = Object.keys(equation.minuend).length === digitCount;
+            const subtrahendComplete = Object.keys(equation.subtrahend).length === digitCount;
+            
+            if (minuendComplete && subtrahendComplete) {
+                // Also check if the equation is valid
                 let minuend = '';
                 let subtrahend = '';
+                for (let j = 0; j < digitCount; j++) {
+                    minuend += equation.minuend[j].numericValue;
+                    subtrahend += equation.subtrahend[j].numericValue;
+                }
                 
-                for (let i = 0; i < digitCount; i++) {
-                    minuend += equation.minuend[i] ? equation.minuend[i].numericValue : '0';
-                    subtrahend += equation.subtrahend[i] ? equation.subtrahend[i].numericValue : '0';
+                if (parseInt(minuend) > parseInt(subtrahend)) {
+                    players[playerIndex].equationComplete = true;
+                    addToLog(`${players[playerIndex].name}'s equation is complete!`);
+                } else {
+                    players[playerIndex].equationComplete = false;
+                }
+            } else {
+                players[playerIndex].equationComplete = false;
+            }
+        }
+        
+        // Check if all players have complete equations
+        function checkAllEquationsComplete() {
+            const playerCount = parseInt(playerCountSelect.value);
+            
+            let allComplete = true;
+            for (let i = 0; i < playerCount; i++) {
+                if (!players[i].equationComplete) {
+                    allComplete = false;
+                    break;
+                }
+            }
+            
+            battleBtn.disabled = !allComplete;
+            
+            if (allComplete) {
+                addToLog(`All players have complete equations! Ready for battle!`);
+            }
+        }
+        
+        // Clear the current player's equation
+        function clearEquation() {
+            if (!roundActive) return;
+            
+            const playerIndex = currentPlayerIndex;
+            playerEquations[playerIndex] = { minuend: [], subtrahend: [] };
+            players[playerIndex].equationComplete = false;
+            selectedCard = null;
+            
+            // Clear all card selections for current player
+            document.querySelectorAll(`.card[data-player="${playerIndex}"]`).forEach(card => {
+                card.classList.remove('selected', 'in-equation');
+            });
+            
+            // Clear all slots for current player
+            document.querySelectorAll(`.number-slot[data-player="${playerIndex}"]`).forEach(slot => {
+                slot.textContent = '';
+                slot.classList.remove('filled');
+            });
+            
+            // Reset displays for current player
+            document.getElementById(`player${playerIndex+1}Result`).textContent = '?';
+            document.getElementById(`player${playerIndex+1}Difference`).textContent = '';
+            
+            // Re-display cards to reset visual state
+            displayPlayerCards(playerIndex);
+            
+            battleBtn.disabled = true;
+            
+            addToLog(`${players[playerIndex].name} cleared their equation.`);
+        }
+        
+        // Clear all equations
+        function clearAllEquations() {
+            const playerCount = parseInt(playerCountSelect.value);
+            
+            for (let i = 0; i < playerCount; i++) {
+                document.getElementById(`player${i+1}Result`).textContent = '?';
+                document.getElementById(`player${i+1}Difference`).textContent = '';
+            }
+        }
+        
+        // Execute the battle
+        function battle() {
+            if (!roundActive || battleCompleted) return;
+            
+            const playerCount = parseInt(playerCountSelect.value);
+            const digitCount = parseInt(digitCountSelect.value);
+            
+            // Calculate differences for all players
+            const differences = [];
+            for (let i = 0; i < playerCount; i++) {
+                const equation = playerEquations[i];
+                
+                let minuend = '';
+                let subtrahend = '';
+                for (let j = 0; j < digitCount; j++) {
+                    minuend += equation.minuend[j].numericValue;
+                    subtrahend += equation.subtrahend[j].numericValue;
                 }
                 
                 const minuendNum = parseInt(minuend);
                 const subtrahendNum = parseInt(subtrahend);
-                
-                // Validate that minuend is greater than subtrahend
-                if (minuendNum <= subtrahendNum) {
-                    document.getElementById(`player${playerIndex+1}Result`).textContent = 'Invalid';
-                    document.getElementById(`player${playerIndex+1}Difference`).textContent = 'Minuend must be greater than subtrahend';
-                    return;
-                }
-                
                 const difference = minuendNum - subtrahendNum;
-                document.getElementById(`player${playerIndex+1}Result`).textContent = difference;
-                document.getElementById(`player${playerIndex+1}Difference`).textContent = `Difference: ${difference}`;
-            }
-            
-            // Check if all players have complete equations
-            function checkAllEquationsComplete() {
-                const digitCount = parseInt(digitCountSelect.value);
-                const playerCount = parseInt(playerCountSelect.value);
                 
-                let allComplete = true;
-                for (let i = 0; i < playerCount; i++) {
-                    const equation = playerEquations[i];
-                    if (equation.minuend.length !== digitCount || equation.subtrahend.length !== digitCount) {
-                        allComplete = false;
-                        break;
-                    }
-                    
-                    // Also check if the equation is valid
-                    let minuend = '';
-                    let subtrahend = '';
-                    for (let j = 0; j < digitCount; j++) {
-                        minuend += equation.minuend[j].numericValue;
-                        subtrahend += equation.subtrahend[j].numericValue;
-                    }
-                    
-                    if (parseInt(minuend) <= parseInt(subtrahend)) {
-                        allComplete = false;
-                        break;
-                    }
-                }
-                
-                battleBtn.disabled = !allComplete;
-            }
-            
-            // Clear the current player's equation
-            function clearEquation() {
-                if (!roundActive) return;
-                
-                playerEquations[currentPlayerIndex] = { minuend: [], subtrahend: [] };
-                selectedCard = null;
-                
-                // Clear all card selections for current player
-                document.querySelectorAll('.card').forEach(card => {
-                    card.classList.remove('selected', 'in-equation');
+                differences.push({
+                    playerIndex: i,
+                    difference: difference,
+                    equation: `${minuendNum} - ${subtrahendNum} = ${difference}`
                 });
                 
-                // Clear all slots for current player
-                document.querySelectorAll(`.number-slot[data-player="${currentPlayerIndex}"]`).forEach(slot => {
-                    slot.textContent = '';
-                    slot.classList.remove('filled');
-                });
-                
-                // Reset displays for current player
-                document.getElementById(`player${currentPlayerIndex+1}Result`).textContent = '?';
-                document.getElementById(`player${currentPlayerIndex+1}Difference`).textContent = '';
-                
-                battleBtn.disabled = true;
+                // Update display with final difference
+                document.getElementById(`player${i+1}Difference`).textContent = `Difference: ${difference}`;
+                document.getElementById(`player${i+1}Difference`).className = 'difference-display';
             }
             
-            // Clear all equations
-            function clearAllEquations() {
-                const playerCount = parseInt(playerCountSelect.value);
-                
-                for (let i = 0; i < playerCount; i++) {
-                    document.getElementById(`player${i+1}Result`).textContent = '?';
-                    document.getElementById(`player${i+1}Difference`).textContent = '';
+            // Find the winner (largest difference)
+            let winner = differences[0];
+            let isTie = false;
+            
+            for (let i = 1; i < differences.length; i++) {
+                if (differences[i].difference > winner.difference) {
+                    winner = differences[i];
+                    isTie = false;
+                } else if (differences[i].difference === winner.difference) {
+                    isTie = true;
                 }
             }
             
-            // Execute the battle
-            function battle() {
-                if (!roundActive || battleCompleted) return;
+            // Determine battle result
+            let resultText = '';
+            if (isTie) {
+                resultText = "It's a tie! All players keep their cards.";
+                addToLog(`Battle resulted in a tie! All differences were ${winner.difference}.`);
                 
-                const playerCount = parseInt(playerCountSelect.value);
-                const digitCount = parseInt(digitCountSelect.value);
-                
-                // Calculate differences for all players
-                const differences = [];
+                // Return cards to each player's deck
                 for (let i = 0; i < playerCount; i++) {
-                    const equation = playerEquations[i];
-                    
-                    let minuend = '';
-                    let subtrahend = '';
-                    for (let j = 0; j < digitCount; j++) {
-                        minuend += equation.minuend[j].numericValue;
-                        subtrahend += equation.subtrahend[j].numericValue;
-                    }
-                    
-                    const minuendNum = parseInt(minuend);
-                    const subtrahendNum = parseInt(subtrahend);
-                    const difference = minuendNum - subtrahendNum;
-                    
-                    differences.push({
-                        playerIndex: i,
-                        difference: difference,
-                        equation: `${minuendNum} - ${subtrahendNum} = ${difference}`
-                    });
-                    
-                    // Update display with final difference
-                    document.getElementById(`player${i+1}Difference`).textContent = `Difference: ${difference}`;
-                    document.getElementById(`player${i+1}Difference`).className = 'difference-display';
+                    playerDecks[i] = playerDecks[i].concat(playerHands[i]);
+                    players[i].cards = playerDecks[i].length;
+                }
+            } else {
+                resultText = `${players[winner.playerIndex].name} wins with a difference of ${winner.difference}!`;
+                addToLog(`${players[winner.playerIndex].name} wins the battle with ${winner.equation}`);
+                
+                // Winner takes all cards
+                const allCards = [];
+                for (let i = 0; i < playerCount; i++) {
+                    allCards.push(...playerHands[i]);
                 }
                 
-                // Find the winner (largest difference)
-                let winner = differences[0];
-                let isTie = false;
+                playerDecks[winner.playerIndex] = playerDecks[winner.playerIndex].concat(allCards);
+                players[winner.playerIndex].cards = playerDecks[winner.playerIndex].length;
+                players[winner.playerIndex].wins++;
                 
-                for (let i = 1; i < differences.length; i++) {
-                    if (differences[i].difference > winner.difference) {
-                        winner = differences[i];
-                        isTie = false;
-                    } else if (differences[i].difference === winner.difference) {
-                        isTie = true;
-                    }
-                }
-                
-                // Determine battle result
-                let resultText = '';
-                if (isTie) {
-                    resultText = "It's a tie! All players keep their cards.";
-                    addToLog(`Battle resulted in a tie! All differences were ${winner.difference}.`);
-                    
-                    // Return cards to each player's deck
-                    for (let i = 0; i < playerCount; i++) {
-                        playerDecks[i] = playerDecks[i].concat(playerHands[i]);
+                // Update other players' card counts
+                for (let i = 0; i < playerCount; i++) {
+                    if (i !== winner.playerIndex) {
                         players[i].cards = playerDecks[i].length;
                     }
-                } else {
-                    resultText = `${players[winner.playerIndex].name} wins with a difference of ${winner.difference}!`;
-                    addToLog(`${players[winner.playerIndex].name} wins the battle with ${winner.equation}`);
-                    
-                    // Winner takes all cards
-                    const allCards = [];
-                    for (let i = 0; i < playerCount; i++) {
-                        allCards.push(...playerHands[i]);
-                    }
-                    
-                    playerDecks[winner.playerIndex] = playerDecks[winner.playerIndex].concat(allCards);
-                    players[winner.playerIndex].cards = playerDecks[winner.playerIndex].length;
-                    players[winner.playerIndex].wins++;
-                    
-                    // Update other players' card counts
-                    for (let i = 0; i < playerCount; i++) {
-                        if (i !== winner.playerIndex) {
-                            players[i].cards = playerDecks[i].length;
+                }
+                
+                // Highlight winner's difference
+                document.getElementById(`player${winner.playerIndex+1}Difference`).classList.add('winner');
+            }
+            
+            battleResult.textContent = resultText;
+            battleResult.style.display = 'block';
+            
+            // Update UI
+            updatePlayerCardCounts();
+            battleCompleted = true;
+            roundActive = false;
+            
+            // Check for game winner
+            checkForWinner();
+            
+            // Show next round button
+            nextRoundBtn.style.display = 'inline-block';
+            battleBtn.disabled = true;
+        }
+        
+        // Move to next round
+        function nextRound() {
+            battleCompleted = false;
+            nextRoundBtn.style.display = 'none';
+            battleResult.style.display = 'none';
+            
+            // Reset to first player
+            currentPlayerIndex = 0;
+            
+            // Enable dealing cards
+            dealBtn.disabled = false;
+            clearAllEquations();
+            
+            // Reset equation displays
+            const playerCount = parseInt(playerCountSelect.value);
+            for (let i = 0; i < playerCount; i++) {
+                document.getElementById(`player${i+1}Difference`).className = 'difference-display';
+            }
+            
+            // Update UI
+            updatePlayerTurn();
+            
+            addToLog(`Starting new round. Deal cards to begin!`);
+        }
+        
+        // Check if any player has won the game
+        function checkForWinner() {
+            const playerCount = parseInt(playerCountSelect.value);
+            let winner = null;
+            
+            // Check if any player has all the cards
+            for (let i = 0; i < playerCount; i++) {
+                let totalCards = 0;
+                for (let j = 0; j < playerCount; j++) {
+                    totalCards += players[j].cards;
+                }
+                
+                if (players[i].cards === totalCards) {
+                    winner = players[i];
+                    break;
+                }
+            }
+            
+            // Also check if any player has no cards left
+            if (!winner) {
+                for (let i = 0; i < playerCount; i++) {
+                    if (players[i].cards === 0) {
+                        // Find player with most cards
+                        let mostCards = 0;
+                        for (let j = 0; j < playerCount; j++) {
+                            if (players[j].cards > mostCards) {
+                                mostCards = players[j].cards;
+                                winner = players[j];
+                            }
                         }
-                    }
-                    
-                    // Highlight winner's difference
-                    document.getElementById(`player${winner.playerIndex+1}Difference`).classList.add('winner');
-                }
-                
-                battleResult.textContent = resultText;
-                battleResult.style.display = 'block';
-                
-                // Update UI
-                updatePlayerCardCounts();
-                battleCompleted = true;
-                roundActive = false;
-                
-                // Check for game winner
-                checkForWinner();
-                
-                // Show next round button
-                nextRoundBtn.style.display = 'inline-block';
-                battleBtn.disabled = true;
-            }
-            
-            // Move to next round
-            function nextRound() {
-                battleCompleted = false;
-                nextRoundBtn.style.display = 'none';
-                battleResult.style.display = 'none';
-                
-                // Reset to first player
-                currentPlayerIndex = 0;
-                updatePlayerTurn();
-                
-                // Enable dealing cards
-                dealBtn.disabled = false;
-                clearAllEquations();
-                
-                // Reset equation displays
-                const playerCount = parseInt(playerCountSelect.value);
-                for (let i = 0; i < playerCount; i++) {
-                    document.getElementById(`player${i+1}Difference`).className = 'difference-display';
-                }
-                
-                addToLog(`Starting new round. Deal cards to begin!`);
-            }
-            
-            // Check if any player has won the game
-            function checkForWinner() {
-                const playerCount = parseInt(playerCountSelect.value);
-                let winner = null;
-                
-                // Check if any player has all the cards
-                for (let i = 0; i < playerCount; i++) {
-                    let totalCards = 0;
-                    for (let j = 0; j < playerCount; j++) {
-                        totalCards += players[j].cards;
-                    }
-                    
-                    if (players[i].cards === totalCards) {
-                        winner = players[i];
                         break;
                     }
                 }
-                
-                // Also check if any player has no cards left
-                if (!winner) {
-                    for (let i = 0; i < playerCount; i++) {
-                        if (players[i].cards === 0) {
-                            // Find player with most cards
-                            let mostCards = 0;
-                            for (let j = 0; j < playerCount; j++) {
-                                if (players[j].cards > mostCards) {
-                                    mostCards = players[j].cards;
-                                    winner = players[j];
-                                }
-                            }
-                            break;
-                        }
-                    }
-                }
-                
-                if (winner) {
-                    gameActive = false;
-                    roundActive = false;
-                    
-                    winMessage.textContent = `🎉 ${winner.name} wins the game with ${winner.cards} cards and ${winner.wins} battle wins! 🎉`;
-                    winMessage.style.display = 'block';
-                    addToLog(`🎉 ${winner.name} wins the game! 🎉`);
-                    
-                    // Highlight winning player
-                    document.getElementById(`playerCard${winner.id}`).classList.add('winner');
-                    document.getElementById(`playerScore${winner.id}`).classList.add('winner');
-                }
             }
             
-            // Update player turn display
-            function updatePlayerTurn() {
-                if (roundActive && !battleCompleted) {
-                    playerTurn.textContent = `${players[currentPlayerIndex].name}'s Turn - Arrange your cards for the greatest difference!`;
-                    
-                    // Highlight current player's card
-                    document.querySelectorAll('.player-card').forEach((card, index) => {
-                        if (index === currentPlayerIndex) {
-                            card.classList.add('active');
-                        } else {
-                            card.classList.remove('active');
-                        }
-                    });
-                } else {
-                    playerTurn.textContent = battleCompleted ? 
-                        "Battle complete! Ready for next round?" : 
-                        "Deal cards to begin the battle!";
-                    
-                    // Remove active highlights
-                    document.querySelectorAll('.player-card').forEach(card => {
+            if (winner) {
+                gameActive = false;
+                roundActive = false;
+                
+                winMessage.textContent = `🎉 ${winner.name} wins the game with ${winner.cards} cards and ${winner.wins} battle wins! 🎉`;
+                winMessage.style.display = 'block';
+                addToLog(`🎉 ${winner.name} wins the game! 🎉`);
+                
+                // Highlight winning player
+                document.getElementById(`playerCard${winner.id}`).classList.add('winner');
+                document.getElementById(`playerScore${winner.id}`).classList.add('winner');
+            }
+        }
+        
+        // Update player turn display
+        function updatePlayerTurn() {
+            if (roundActive && !battleCompleted) {
+                playerTurn.textContent = `${players[currentPlayerIndex].name}'s Turn - Arrange your cards for the greatest difference!`;
+                
+                // Highlight current player's card
+                document.querySelectorAll('.player-card').forEach((card, index) => {
+                    if (index === currentPlayerIndex) {
+                        card.classList.add('active');
+                    } else {
                         card.classList.remove('active');
-                    });
-                }
-            }
-            
-            // Update deck information
-            function updateDeckInfo() {
-                const cardsPerPlayer = parseInt(cardsPerPlayerSelect.value);
-                const playerCount = parseInt(playerCountSelect.value);
-                deckInfo.textContent = `Cards in play: ${cardsPerPlayer * playerCount}`;
-            }
-            
-            // Update player card counts
-            function updatePlayerCardCounts() {
-                players.forEach(player => {
-                    document.getElementById(`playerScore${player.id}`).textContent = `${player.cards} Cards`;
-                    document.getElementById(`playerCardsCount${player.id}`).textContent = `Wins: ${player.wins}`;
+                    }
+                });
+            } else {
+                playerTurn.textContent = battleCompleted ? 
+                    "Battle complete! Ready for next round?" : 
+                    "Deal cards to begin the battle!";
+                
+                // Remove active highlights
+                document.querySelectorAll('.player-card').forEach(card => {
+                    card.classList.remove('active');
                 });
             }
-            
-            // Update card selection info text
-            function updateCardSelectionInfo() {
-                if (selectedCard !== null) {
-                    cardSelectionInfo.textContent = 'Card selected. Click on a slot to place it in your equation.';
-                } else {
-                    cardSelectionInfo.textContent = 'Select a card, then click where you want to place it in your subtraction problem.';
-                }
+        }
+        
+        // Update deck information
+        function updateDeckInfo() {
+            const cardsPerPlayer = parseInt(cardsPerPlayerSelect.value);
+            const playerCount = parseInt(playerCountSelect.value);
+            deckInfo.textContent = `Cards in play: ${cardsPerPlayer * playerCount}`;
+        }
+        
+        // Update player card counts
+        function updatePlayerCardCounts() {
+            players.forEach(player => {
+                document.getElementById(`playerScore${player.id}`).textContent = `${player.cards} Cards`;
+                document.getElementById(`playerCardsCount${player.id}`).textContent = `Wins: ${player.wins}`;
+            });
+        }
+        
+        // Update card selection info text
+        function updateCardSelectionInfo() {
+            if (selectedCard !== null) {
+                cardSelectionInfo.textContent = 'Card selected. Click on a slot to place it in your equation.';
+            } else {
+                cardSelectionInfo.textContent = `Select a card, then click where you want to place it in ${players[currentPlayerIndex].name}'s subtraction problem.`;
             }
-            
-            // Game log functions
-            function addToLog(message) {
-                const logEntry = document.createElement('div');
-                logEntry.className = 'log-entry';
-                logEntry.textContent = message;
-                gameLog.appendChild(logEntry);
-                gameLog.scrollTop = gameLog.scrollHeight;
-            }
-            
-            function clearGameLog() {
-                gameLog.innerHTML = '';
-            }
-            
-            // Event listeners
-            dealBtn.addEventListener('click', dealCards);
-            battleBtn.addEventListener('click', battle);
-            clearEquationBtn.addEventListener('click', clearEquation);
-            nextRoundBtn.addEventListener('click', nextRound);
-            resetGameBtn.addEventListener('click', initializeGame);
-            applySettingsBtn.addEventListener('click', initializeGame);
-            
-            // Initialize the game on load
-            initializeGame();
-        });
-    </script>
-</body>
-</html>
+        }
+        
+        // Game log functions
+        function addToLog(message) {
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.textContent = message;
+            gameLog.appendChild(logEntry);
+            gameLog.scrollTop = gameLog.scrollHeight;
+        }
+        
+        function clearGameLog() {
+            gameLog.innerHTML = '';
+        }
+        
+        // Event listeners
+        dealBtn.addEventListener('click', dealCards);
+        battleBtn.addEventListener('click', battle);
+        clearEquationBtn.addEventListener('click', clearEquation);
+        nextRoundBtn.addEventListener('click', nextRound);
+        resetGameBtn.addEventListener('click', initializeGame);
+        applySettingsBtn.addEventListener('click', initializeGame);
+        
+        // Initialize the game on load
+        initializeGame();
+    });
+</script>
