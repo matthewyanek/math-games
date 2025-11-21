@@ -219,15 +219,20 @@
             font-weight: 700;
         }
 
-        /* New game card colors */
+        /* Game card colors */
+        .game-card.clock {
+            --primary: #4361ee;
+            --secondary: #7209b7;
+        }
+
         .game-card.subtraction {
             --primary: #1565c0;
             --secondary: #00796b;
         }
 
-        .game-card.clock {
-            --primary: #4361ee;
-            --secondary: #7209b7;
+        .game-card.nifty {
+            --primary: #d81b60;
+            --secondary: #8e24aa;
         }
 
         /* Responsive Design */
@@ -309,6 +314,17 @@
                 <h3>Subtraction to Zero</h3>
                 <p>Start at 100 and subtract card values to reach zero. The first player to hit zero wins! Perfect for practicing subtraction skills.</p>
                 <a href="subtraction-to-zero/" class="play-btn">
+                    <span>Play Now</span>
+                    <span>→</span>
+                </a>
+            </div>
+            
+            <div class="game-card nifty">
+                <span class="featured-badge">NEW</span>
+                <div class="game-icon">🎯</div>
+                <h3>Nifty Fifty</h3>
+                <p>Create subtraction problems with a difference closest to 50. Perfect for practicing multi-digit subtraction and strategic thinking!</p>
+                <a href="nifty-fifty/" class="play-btn">
                     <span>Play Now</span>
                     <span>→</span>
                 </a>
