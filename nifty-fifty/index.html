@@ -1128,4 +1128,436 @@
             
             // Display cards for a specific player
             function displayPlayerCards(playerIndex) {
-                cardsContainer.innerHTML =
+                cardsContainer.innerHTML = '';
+                selectedCard = null;
+                
+                const hand = playerHands[playerIndex];
+                hand.forEach((card, index) => {
+                    const cardElement = createCardElement(card, index);
+                    cardsContainer.appendChild(cardElement);
+                });
+            }
+            
+            // Create a visual card element
+            function createCardElement(card, index) {
+                const cardElement = document.createElement('div');
+                const isRed = card.suit === 'hearts' || card.suit === 'diamonds';
+                cardElement.className = `card ${isRed ? 'red' : 'black'} ${card.isWild ? 'wild' : ''}`;
+                cardElement.dataset.index = index;
+                
+                if (card.suit === 'joker') {
+                    cardElement.innerHTML = `
+                        <div class="card-value">Joker</div>
+                    `;
+                    cardElement.style.background = 'linear-gradient(135deg, #ffeb3b, #ff9800)';
+                    cardElement.style.color = '#d32f2f';
+                } else {
+                    const suitSymbol = getSuitSymbol(card.suit);
+                    
+                    cardElement.innerHTML = `
+                        <div class="card-suit">${suitSymbol}</div>
+                        <div class="card-value">${card.value}</div>
+                        <div class="card-suit bottom">${suitSymbol}</div>
+                    `;
+                }
+                
+                // Add click event for card selection
+                cardElement.addEventListener('click', function() {
+                    if (!roundActive) return;
+                    
+                    // Deselect previously selected card
+                    if (selectedCard !== null) {
+                        const prevCard = document.querySelector(`.card[data-index="${selectedCard}"]`);
+                        if (prevCard) prevCard.classList.remove('selected');
+                    }
+                    
+                    // Select this card
+                    this.classList.add('selected');
+                    selectedCard = index;
+                    
+                    updateCardSelectionInfo();
+                });
+                
+                return cardElement;
+            }
+            
+            // Get Unicode symbol for card suit
+            function getSuitSymbol(suit) {
+                switch(suit) {
+                    case 'hearts': return '♥';
+                    case 'diamonds': return '♦';
+                    case 'clubs': return '♣';
+                    case 'spades': return '♠';
+                    default: return '';
+                }
+            }
+            
+            // Create equation slots for minuend and subtrahend
+            function createEquationSlots() {
+                const digitCount = parseInt(digitCountSelect.value);
+                
+                // Clear existing slots
+                minuendSlots.innerHTML = '';
+                subtrahendSlots.innerHTML = '';
+                
+                // Create minuend slots
+                for (let i = 0; i < digitCount; i++) {
+                    const slot = document.createElement('div');
+                    slot.className = 'number-slot';
+                    slot.dataset.position = i;
+                    slot.dataset.type = 'minuend';
+                    
+                    slot.addEventListener('click', function() {
+                        if (selectedCard !== null) {
+                            placeCardInSlot('minuend', i);
+                        } else {
+                            this.classList.add('highlight');
+                            setTimeout(() => this.classList.remove('highlight'), 500);
+                        }
+                    });
+                    
+                    minuendSlots.appendChild(slot);
+                }
+                
+                // Create subtrahend slots
+                for (let i = 0; i < digitCount; i++) {
+                    const slot = document.createElement('div');
+                    slot.className = 'number-slot';
+                    slot.dataset.position = i;
+                    slot.dataset.type = 'subtrahend';
+                    
+                    slot.addEventListener('click', function() {
+                        if (selectedCard !== null) {
+                            placeCardInSlot('subtrahend', i);
+                        } else {
+                            this.classList.add('highlight');
+                            setTimeout(() => this.classList.remove('highlight'), 500);
+                        }
+                    });
+                    
+                    subtrahendSlots.appendChild(slot);
+                }
+            }
+            
+            // Place a card in a slot
+            function placeCardInSlot(type, position) {
+                if (selectedCard === null) return;
+                
+                const hand = playerHands[currentPlayerIndex];
+                const card = hand[selectedCard];
+                
+                // Check if the card is already used
+                if (isCardUsed(card)) {
+                    alert('This card is already used in the equation!');
+                    return;
+                }
+                
+                // Place the card in the equation
+                currentEquation[type][position] = card;
+                
+                // Update the slot display
+                const slot = document.querySelector(`.number-slot[data-type="${type}"][data-position="${position}"]`);
+                slot.textContent = card.value;
+                slot.classList.add('filled');
+                
+                // Deselect the card
+                const cardElement = document.querySelector(`.card[data-index="${selectedCard}"]`);
+                cardElement.classList.remove('selected');
+                cardElement.classList.add('in-equation');
+                selectedCard = null;
+                
+                // Update the equation result
+                updateEquationResult();
+                
+                // Check if equation is complete
+                checkEquationComplete();
+            }
+            
+            // Check if a card is already used in the equation
+            function isCardUsed(card) {
+                for (let type of ['minuend', 'subtrahend']) {
+                    for (let pos in currentEquation[type]) {
+                        if (currentEquation[type][pos] === card) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+            
+            // Update the equation result display
+            function updateEquationResult() {
+                const digitCount = parseInt(digitCountSelect.value);
+                
+                // Check if both minuend and subtrahend are complete
+                if (currentEquation.minuend.length !== digitCount || currentEquation.subtrahend.length !== digitCount) {
+                    resultDisplay.textContent = '?';
+                    return;
+                }
+                
+                // Build numbers from cards
+                let minuend = '';
+                let subtrahend = '';
+                
+                for (let i = 0; i < digitCount; i++) {
+                    minuend += currentEquation.minuend[i] ? currentEquation.minuend[i].numericValue : '0';
+                    subtrahend += currentEquation.subtrahend[i] ? currentEquation.subtrahend[i].numericValue : '0';
+                }
+                
+                const minuendNum = parseInt(minuend);
+                const subtrahendNum = parseInt(subtrahend);
+                
+                // Validate that minuend is greater than subtrahend
+                if (minuendNum <= subtrahendNum) {
+                    resultDisplay.textContent = 'Invalid';
+                    differenceDisplay.textContent = 'Minuend must be greater than subtrahend';
+                    differenceDisplay.className = 'difference-display';
+                    submitBtn.disabled = true;
+                    return;
+                }
+                
+                const difference = minuendNum - subtrahendNum;
+                resultDisplay.textContent = difference;
+                
+                // Calculate distance from 50
+                const distanceFrom50 = Math.abs(difference - 50);
+                differenceDisplay.textContent = `Distance from 50: ${distanceFrom50}`;
+                differenceDisplay.className = 'difference-display';
+                
+                if (difference === 50) {
+                    differenceDisplay.textContent += ' (Exactly 50! +2 points)';
+                    differenceDisplay.classList.add('exact');
+                } else if (distanceFrom50 <= 5) {
+                    differenceDisplay.classList.add('close');
+                }
+                
+                submitBtn.disabled = false;
+            }
+            
+            // Check if the equation is complete
+            function checkEquationComplete() {
+                const digitCount = parseInt(digitCountSelect.value);
+                const minuendComplete = Object.keys(currentEquation.minuend).length === digitCount;
+                const subtrahendComplete = Object.keys(currentEquation.subtrahend).length === digitCount;
+                
+                if (minuendComplete && subtrahendComplete) {
+                    updateEquationResult();
+                }
+            }
+            
+            // Clear the current equation
+            function clearEquation() {
+                currentEquation = { minuend: [], subtrahend: [] };
+                selectedCard = null;
+                
+                // Clear all card selections
+                document.querySelectorAll('.card').forEach(card => {
+                    card.classList.remove('selected', 'in-equation');
+                });
+                
+                // Clear all slots
+                document.querySelectorAll('.number-slot').forEach(slot => {
+                    slot.textContent = '';
+                    slot.classList.remove('filled');
+                });
+                
+                // Reset displays
+                resultDisplay.textContent = '?';
+                differenceDisplay.textContent = '';
+                submitBtn.disabled = true;
+            }
+            
+            // Submit the equation
+            function submitEquation() {
+                if (!roundActive) return;
+                
+                const digitCount = parseInt(digitCountSelect.value);
+                const currentPlayer = players[currentPlayerIndex];
+                
+                // Build numbers from cards
+                let minuend = '';
+                let subtrahend = '';
+                
+                for (let i = 0; i < digitCount; i++) {
+                    minuend += currentEquation.minuend[i].numericValue;
+                    subtrahend += currentEquation.subtrahend[i].numericValue;
+                }
+                
+                const minuendNum = parseInt(minuend);
+                const subtrahendNum = parseInt(subtrahend);
+                const difference = minuendNum - subtrahendNum;
+                const distanceFrom50 = Math.abs(difference - 50);
+                
+                // Store the result for this round
+                currentRoundResults.push({
+                    playerId: currentPlayerIndex,
+                    minuend: minuendNum,
+                    subtrahend: subtrahendNum,
+                    difference: difference,
+                    distanceFrom50: distanceFrom50
+                });
+                
+                addToLog(`${currentPlayer.name} created: ${minuendNum} - ${subtrahendNum} = ${difference} (distance from 50: ${distanceFrom50})`);
+                
+                // Move to next player or end round
+                if (currentRoundResults.length < players.length) {
+                    // Move to next player
+                    currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+                    displayPlayerCards(currentPlayerIndex);
+                    clearEquation();
+                    updatePlayerTurn();
+                    addToLog(`${players[currentPlayerIndex].name}'s turn`);
+                } else {
+                    // All players have submitted, determine round winner
+                    determineRoundWinner();
+                }
+            }
+            
+            // Determine the winner of the current round
+            function determineRoundWinner() {
+                // Find the result with the smallest distance from 50
+                let bestResult = currentRoundResults[0];
+                let exactMatch = false;
+                
+                for (let result of currentRoundResults) {
+                    if (result.distanceFrom50 < bestResult.distanceFrom50) {
+                        bestResult = result;
+                    }
+                    
+                    if (result.difference === 50) {
+                        exactMatch = true;
+                    }
+                }
+                
+                // Check for exact matches (they get 2 points)
+                const exactMatches = currentRoundResults.filter(r => r.difference === 50);
+                
+                if (exactMatches.length > 0) {
+                    // All players with exact matches get 2 points
+                    exactMatches.forEach(match => {
+                        players[match.playerId].points += 2;
+                        addToLog(`${players[match.playerId].name} got exactly 50 and earns 2 points!`);
+                    });
+                } else {
+                    // The player with the closest difference gets 1 point
+                    players[bestResult.playerId].points += 1;
+                    addToLog(`${players[bestResult.playerId].name} had the closest difference (${bestResult.distanceFrom50}) and earns 1 point`);
+                }
+                
+                // Update player displays
+                updatePlayerDisplays();
+                
+                // Check for game winner
+                checkForWinner();
+                
+                // Show next round button
+                nextRoundBtn.style.display = 'inline-block';
+                roundActive = false;
+                equationBuilder.style.display = 'none';
+            }
+            
+            // Update all player displays
+            function updatePlayerDisplays() {
+                players.forEach(player => {
+                    document.getElementById(`playerScore${player.id}`).textContent = player.points;
+                    document.getElementById(`playerPoints${player.id}`).textContent = `Points: ${player.points}`;
+                });
+            }
+            
+            // Check if any player has won the game
+            function checkForWinner() {
+                const winners = players.filter(player => player.points >= pointsToWin);
+                
+                if (winners.length > 0) {
+                    gameActive = false;
+                    roundActive = false;
+                    
+                    if (winners.length === 1) {
+                        winMessage.textContent = `🎉 ${winners[0].name} wins the game with ${winners[0].points} points! 🎉`;
+                    } else {
+                        // Tie - multiple players reached the target
+                        const winnerNames = winners.map(w => w.name).join(', ');
+                        winMessage.textContent = `🏆 Tie game! ${winnerNames} all reached ${pointsToWin} points!`;
+                    }
+                    
+                    winMessage.style.display = 'block';
+                    
+                    // Highlight winning players
+                    winners.forEach(winner => {
+                        document.getElementById(`playerCard${winner.id}`).classList.add('winner');
+                        document.getElementById(`playerScore${winner.id}`).classList.add('winner');
+                    });
+                }
+            }
+            
+            // Move to next round
+            function nextRound() {
+                currentRoundResults = [];
+                nextRoundBtn.style.display = 'none';
+                
+                // Reset to first player
+                currentPlayerIndex = 0;
+                updatePlayerTurn();
+                
+                // Enable drawing cards
+                drawBtn.disabled = false;
+                clearEquation();
+                
+                addToLog(`Starting new round. ${players[currentPlayerIndex].name}'s turn`);
+            }
+            
+            // Update player turn display
+            function updatePlayerTurn() {
+                playerTurn.textContent = `${players[currentPlayerIndex].name}'s Turn`;
+                
+                // Highlight current player's card
+                document.querySelectorAll('.player-card').forEach((card, index) => {
+                    if (index === currentPlayerIndex) {
+                        card.classList.add('active');
+                    } else {
+                        card.classList.remove('active');
+                    }
+                });
+            }
+            
+            // Update deck information
+            function updateDeckInfo() {
+                deckInfo.textContent = `Cards remaining: ${deck.length}`;
+            }
+            
+            // Update card selection info text
+            function updateCardSelectionInfo() {
+                if (selectedCard !== null) {
+                    cardSelectionInfo.textContent = 'Card selected. Click on a slot to place it in your equation.';
+                } else {
+                    cardSelectionInfo.textContent = 'Select a card, then click where you want to place it in your equation.';
+                }
+            }
+            
+            // Game log functions
+            function addToLog(message) {
+                const logEntry = document.createElement('div');
+                logEntry.className = 'log-entry';
+                logEntry.textContent = message;
+                gameLog.appendChild(logEntry);
+                gameLog.scrollTop = gameLog.scrollHeight;
+            }
+            
+            function clearGameLog() {
+                gameLog.innerHTML = '';
+            }
+            
+            // Event listeners
+            drawBtn.addEventListener('click', drawCards);
+            submitBtn.addEventListener('click', submitEquation);
+            clearEquationBtn.addEventListener('click', clearEquation);
+            nextRoundBtn.addEventListener('click', nextRound);
+            resetGameBtn.addEventListener('click', initializeGame);
+            applySettingsBtn.addEventListener('click', initializeGame);
+            
+            // Initialize the game on load
+            initializeGame();
+        });
+    </script>
+</body>
+</html>
