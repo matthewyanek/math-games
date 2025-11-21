@@ -371,6 +371,10 @@
             border: 2px solid var(--primary-light);
         }
         
+        .card.in-equation {
+            background-color: #e3f2fd;
+        }
+        
         .card.red {
             color: #d32f2f;
         }
@@ -399,7 +403,7 @@
             transform: rotate(180deg);
         }
         
-        .equation-container {
+        .equation-builder {
             background-color: var(--bg-light);
             padding: 20px;
             border-radius: 8px;
@@ -407,35 +411,92 @@
             text-align: center;
         }
         
-        body.light-mode .equation-container {
+        body.light-mode .equation-builder {
             background-color: var(--light-bg-secondary);
         }
         
-        .equation {
-            font-size: 1.8rem;
-            font-weight: 700;
-            margin: 15px 0;
+        .equation-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        .number-slot {
+            width: 60px;
+            height: 80px;
+            border: 2px dashed var(--gray-medium);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .number-slot.filled {
+            border: 2px solid var(--primary-medium);
+            background-color: rgba(233, 30, 99, 0.1);
+        }
+        
+        .number-slot.highlight {
+            border-color: #fbbc05;
+            background-color: rgba(251, 188, 5, 0.1);
+        }
+        
+        .operator {
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 0 10px;
             color: var(--primary-light);
         }
         
-        .difference {
-            font-size: 1.5rem;
-            margin: 10px 0;
-            color: var(--text-primary);
+        .equals {
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 0 10px;
+            color: var(--primary-light);
         }
         
-        body.light-mode .difference {
+        .result {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--text-primary);
+            min-width: 80px;
+            text-align: center;
+        }
+        
+        body.light-mode .result {
             color: var(--light-text-primary);
         }
         
-        .difference.exact {
+        .difference-display {
+            font-size: 1.5rem;
+            margin: 15px 0;
+            color: var(--text-primary);
+        }
+        
+        body.light-mode .difference-display {
+            color: var(--light-text-primary);
+        }
+        
+        .difference-display.exact {
             color: #34a853;
             font-weight: 700;
         }
         
-        .difference.close {
+        .difference-display.close {
             color: #fbbc05;
             font-weight: 700;
+        }
+        
+        .slot-container {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
         }
         
         .game-log {
@@ -577,6 +638,17 @@
             color: var(--primary-light);
         }
         
+        .equation-instructions {
+            text-align: center;
+            margin: 10px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        body.light-mode .equation-instructions {
+            color: var(--light-text-secondary);
+        }
+        
         @media (max-width: 768px) {
             .game-setup {
                 grid-template-columns: 1fr;
@@ -612,8 +684,13 @@
                 height: 85px;
             }
             
-            .equation {
-                font-size: 1.5rem;
+            .number-slot {
+                width: 50px;
+                height: 70px;
+            }
+            
+            .equation-display {
+                gap: 5px;
             }
         }
     </style>
@@ -697,15 +774,29 @@
                 <!-- Cards will be added here by JavaScript -->
             </div>
             
-            <div class="equation-container" id="equationContainer" style="display: none;">
-                <div class="equation" id="equationDisplay"></div>
-                <div class="difference" id="differenceDisplay"></div>
+            <div class="equation-builder" id="equationBuilder" style="display: none;">
+                <h3>Build Your Subtraction Problem</h3>
+                <p class="equation-instructions">Click on a card, then click where you want to place it in your equation</p>
+                
+                <div class="equation-display">
+                    <div class="slot-container" id="minuendSlots">
+                        <!-- Minuend slots will be added here -->
+                    </div>
+                    <div class="operator">−</div>
+                    <div class="slot-container" id="subtrahendSlots">
+                        <!-- Subtrahend slots will be added here -->
+                    </div>
+                    <div class="equals">=</div>
+                    <div class="result" id="resultDisplay">?</div>
+                </div>
+                
+                <div class="difference-display" id="differenceDisplay"></div>
             </div>
             
             <div class="game-controls">
                 <button id="drawBtn">Draw Cards</button>
                 <button id="submitBtn" disabled>Submit Equation</button>
-                <button id="resetSelectionBtn" class="secondary-btn">Reset Selection</button>
+                <button id="clearEquationBtn" class="secondary-btn">Clear Equation</button>
                 <button id="nextRoundBtn" class="secondary-btn" style="display: none;">Next Round</button>
                 <button id="resetGameBtn" class="secondary-btn">Reset Game</button>
             </div>
@@ -721,6 +812,7 @@
             </div>
         </section>
         
+        <!-- Rest of the content remains the same as before -->
         <section>
             <h2>About the Game</h2>
             <p>"Nifty Fifty" is an engaging math game where players create subtraction problems aiming for a difference of exactly 50. The game helps develop multi-digit subtraction skills and strategic thinking.</p>
@@ -810,7 +902,8 @@
             let roundActive = false;
             let deck = [];
             let playerHands = [];
-            let selectedCards = [];
+            let selectedCard = null;
+            let currentEquation = { minuend: [], subtrahend: [] };
             let currentRoundResults = [];
             let pointsToWin = 5;
             
@@ -820,12 +913,14 @@
             const playerTurn = document.getElementById('playerTurn');
             const deckInfo = document.getElementById('deckInfo');
             const cardSelectionInfo = document.getElementById('cardSelectionInfo');
-            const equationContainer = document.getElementById('equationContainer');
-            const equationDisplay = document.getElementById('equationDisplay');
+            const equationBuilder = document.getElementById('equationBuilder');
+            const minuendSlots = document.getElementById('minuendSlots');
+            const subtrahendSlots = document.getElementById('subtrahendSlots');
+            const resultDisplay = document.getElementById('resultDisplay');
             const differenceDisplay = document.getElementById('differenceDisplay');
             const drawBtn = document.getElementById('drawBtn');
             const submitBtn = document.getElementById('submitBtn');
-            const resetSelectionBtn = document.getElementById('resetSelectionBtn');
+            const clearEquationBtn = document.getElementById('clearEquationBtn');
             const nextRoundBtn = document.getElementById('nextRoundBtn');
             const resetGameBtn = document.getElementById('resetGameBtn');
             const gameLog = document.getElementById('gameLog');
@@ -861,15 +956,17 @@
                 gameActive = true;
                 roundActive = false;
                 playerHands = [];
-                selectedCards = [];
+                selectedCard = null;
+                currentEquation = { minuend: [], subtrahend: [] };
                 currentRoundResults = [];
                 
                 // Clear containers
                 playersContainer.innerHTML = '';
                 cardsContainer.innerHTML = '';
-                equationContainer.style.display = 'none';
+                equationBuilder.style.display = 'none';
                 winMessage.style.display = 'none';
                 nextRoundBtn.style.display = 'none';
+                clearEquation();
                 
                 // Create players
                 for (let i = 0; i < playerCount; i++) {
@@ -922,7 +1019,6 @@
                 // Reset buttons
                 drawBtn.disabled = false;
                 submitBtn.disabled = true;
-                resetSelectionBtn.disabled = true;
             }
             
             // Create a deck of cards based on settings
@@ -1020,9 +1116,10 @@
                 
                 addToLog(`${players[currentPlayerIndex].name} drew ${cardsPerPlayer} cards`);
                 
-                // Enable selection
+                // Enable equation builder
                 drawBtn.disabled = true;
-                resetSelectionBtn.disabled = false;
+                equationBuilder.style.display = 'block';
+                createEquationSlots();
                 roundActive = true;
                 
                 updateDeckInfo();
@@ -1031,348 +1128,4 @@
             
             // Display cards for a specific player
             function displayPlayerCards(playerIndex) {
-                cardsContainer.innerHTML = '';
-                selectedCards = [];
-                
-                const hand = playerHands[playerIndex];
-                hand.forEach((card, index) => {
-                    const cardElement = createCardElement(card, index);
-                    cardsContainer.appendChild(cardElement);
-                });
-            }
-            
-            // Create a visual card element
-            function createCardElement(card, index) {
-                const cardElement = document.createElement('div');
-                const isRed = card.suit === 'hearts' || card.suit === 'diamonds';
-                cardElement.className = `card ${isRed ? 'red' : 'black'} ${card.isWild ? 'wild' : ''}`;
-                cardElement.dataset.index = index;
-                
-                if (card.suit === 'joker') {
-                    cardElement.innerHTML = `
-                        <div class="card-value">Joker</div>
-                    `;
-                    cardElement.style.background = 'linear-gradient(135deg, #ffeb3b, #ff9800)';
-                    cardElement.style.color = '#d32f2f';
-                } else {
-                    const suitSymbol = getSuitSymbol(card.suit);
-                    
-                    cardElement.innerHTML = `
-                        <div class="card-suit">${suitSymbol}</div>
-                        <div class="card-value">${card.value}</div>
-                        <div class="card-suit bottom">${suitSymbol}</div>
-                    `;
-                }
-                
-                // Add click event for card selection
-                cardElement.addEventListener('click', function() {
-                    if (!roundActive) return;
-                    
-                    const cardIndex = parseInt(this.dataset.index);
-                    const isSelected = this.classList.contains('selected');
-                    
-                    if (isSelected) {
-                        // Deselect card
-                        this.classList.remove('selected');
-                        selectedCards = selectedCards.filter(idx => idx !== cardIndex);
-                    } else {
-                        // Select card if we haven't reached the limit
-                        const digitCount = parseInt(digitCountSelect.value);
-                        const maxSelection = digitCount * 2; // minuend and subtrahend
-                        
-                        if (selectedCards.length < maxSelection) {
-                            this.classList.add('selected');
-                            selectedCards.push(cardIndex);
-                        }
-                    }
-                    
-                    updateCardSelectionInfo();
-                    updateSubmitButton();
-                });
-                
-                return cardElement;
-            }
-            
-            // Get Unicode symbol for card suit
-            function getSuitSymbol(suit) {
-                switch(suit) {
-                    case 'hearts': return '♥';
-                    case 'diamonds': return '♦';
-                    case 'clubs': return '♣';
-                    case 'spades': return '♠';
-                    default: return '';
-                }
-            }
-            
-            // Update card selection info text
-            function updateCardSelectionInfo() {
-                const digitCount = parseInt(digitCountSelect.value);
-                const neededCards = digitCount * 2;
-                const selectedCount = selectedCards.length;
-                
-                if (selectedCount === 0) {
-                    cardSelectionInfo.textContent = `Select ${neededCards} cards to form a ${digitCount}-digit subtraction problem`;
-                } else if (selectedCount < neededCards) {
-                    cardSelectionInfo.textContent = `Selected ${selectedCount} of ${neededCards} cards`;
-                } else {
-                    cardSelectionInfo.textContent = `All cards selected. Arrange them to create your subtraction problem.`;
-                }
-            }
-            
-            // Update submit button state
-            function updateSubmitButton() {
-                const digitCount = parseInt(digitCountSelect.value);
-                const neededCards = digitCount * 2;
-                submitBtn.disabled = selectedCards.length !== neededCards;
-            }
-            
-            // Submit the equation
-            function submitEquation() {
-                if (!roundActive || selectedCards.length === 0) return;
-                
-                const digitCount = parseInt(digitCountSelect.value);
-                const neededCards = digitCount * 2;
-                
-                if (selectedCards.length !== neededCards) {
-                    alert(`Please select exactly ${neededCards} cards to form a ${digitCount}-digit subtraction problem`);
-                    return;
-                }
-                
-                const currentPlayer = players[currentPlayerIndex];
-                const hand = playerHands[currentPlayerIndex];
-                
-                // Get the selected cards
-                const selectedCardObjects = selectedCards.map(index => hand[index]);
-                
-                // For simplicity, we'll automatically arrange the cards to create the best possible equation
-                // In a more advanced version, we could let players arrange the cards manually
-                const { minuend, subtrahend, difference } = findBestEquation(selectedCardObjects, digitCount);
-                
-                // Display the equation
-                equationDisplay.textContent = `${minuend} - ${subtrahend} = ${difference}`;
-                
-                const distanceFrom50 = Math.abs(difference - 50);
-                differenceDisplay.textContent = `Difference from 50: ${distanceFrom50}`;
-                differenceDisplay.className = 'difference';
-                
-                if (difference === 50) {
-                    differenceDisplay.textContent += ' (Exactly 50! +2 points)';
-                    differenceDisplay.classList.add('exact');
-                } else if (distanceFrom50 <= 5) {
-                    differenceDisplay.classList.add('close');
-                }
-                
-                equationContainer.style.display = 'block';
-                
-                // Store the result for this round
-                currentRoundResults.push({
-                    playerId: currentPlayerIndex,
-                    minuend: minuend,
-                    subtrahend: subtrahend,
-                    difference: difference,
-                    distanceFrom50: distanceFrom50
-                });
-                
-                addToLog(`${currentPlayer.name} created: ${minuend} - ${subtrahend} = ${difference} (distance from 50: ${distanceFrom50})`);
-                
-                // Move to next player or end round
-                if (currentRoundResults.length < players.length) {
-                    // Move to next player
-                    currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
-                    displayPlayerCards(currentPlayerIndex);
-                    updatePlayerTurn();
-                    addToLog(`${players[currentPlayerIndex].name}'s turn`);
-                } else {
-                    // All players have submitted, determine round winner
-                    determineRoundWinner();
-                }
-                
-                // Reset for next player
-                selectedCards = [];
-                submitBtn.disabled = true;
-                resetSelectionBtn.disabled = true;
-            }
-            
-            // Find the best equation from selected cards
-            function findBestEquation(cards, digitCount) {
-                const digits = cards.map(card => card.isWild ? null : card.numericValue);
-                const wildCount = cards.filter(card => card.isWild).length;
-                
-                // This is a simplified version - in a real implementation, we would
-                // try all possible arrangements of digits to find the best equation
-                
-                // For now, we'll sort the digits and create a simple equation
-                const sortedDigits = [...digits].filter(d => d !== null).sort((a, b) => b - a);
-                
-                // Use wild cards as needed to fill positions
-                while (sortedDigits.length < digitCount * 2 && wildCount > 0) {
-                    // For wild cards, we'll use 9 for minuend and 0 for subtrahend to maximize difference
-                    if (sortedDigits.length < digitCount) {
-                        sortedDigits.unshift(9); // Add to minuend
-                    } else {
-                        sortedDigits.push(0); // Add to subtrahend
-                    }
-                }
-                
-                // Split into minuend and subtrahend
-                const minuendDigits = sortedDigits.slice(0, digitCount);
-                const subtrahendDigits = sortedDigits.slice(digitCount, digitCount * 2);
-                
-                const minuend = parseInt(minuendDigits.join(''));
-                const subtrahend = parseInt(subtrahendDigits.join(''));
-                const difference = minuend - subtrahend;
-                
-                return { minuend, subtrahend, difference };
-            }
-            
-            // Determine the winner of the current round
-            function determineRoundWinner() {
-                // Find the result with the smallest distance from 50
-                let bestResult = currentRoundResults[0];
-                let exactMatch = false;
-                
-                for (let result of currentRoundResults) {
-                    if (result.distanceFrom50 < bestResult.distanceFrom50) {
-                        bestResult = result;
-                    }
-                    
-                    if (result.difference === 50) {
-                        exactMatch = true;
-                    }
-                }
-                
-                // Check for exact matches (they get 2 points)
-                const exactMatches = currentRoundResults.filter(r => r.difference === 50);
-                
-                if (exactMatches.length > 0) {
-                    // All players with exact matches get 2 points
-                    exactMatches.forEach(match => {
-                        players[match.playerId].points += 2;
-                        addToLog(`${players[match.playerId].name} got exactly 50 and earns 2 points!`);
-                    });
-                } else {
-                    // The player with the closest difference gets 1 point
-                    players[bestResult.playerId].points += 1;
-                    addToLog(`${players[bestResult.playerId].name} had the closest difference (${bestResult.distanceFrom50}) and earns 1 point`);
-                }
-                
-                // Update player displays
-                updatePlayerDisplays();
-                
-                // Check for game winner
-                checkForWinner();
-                
-                // Show next round button
-                nextRoundBtn.style.display = 'inline-block';
-                roundActive = false;
-            }
-            
-            // Update all player displays
-            function updatePlayerDisplays() {
-                players.forEach(player => {
-                    document.getElementById(`playerScore${player.id}`).textContent = player.points;
-                    document.getElementById(`playerPoints${player.id}`).textContent = `Points: ${player.points}`;
-                });
-            }
-            
-            // Check if any player has won the game
-            function checkForWinner() {
-                const winners = players.filter(player => player.points >= pointsToWin);
-                
-                if (winners.length > 0) {
-                    gameActive = false;
-                    roundActive = false;
-                    
-                    if (winners.length === 1) {
-                        winMessage.textContent = `🎉 ${winners[0].name} wins the game with ${winners[0].points} points! 🎉`;
-                    } else {
-                        // Tie - multiple players reached the target
-                        const winnerNames = winners.map(w => w.name).join(', ');
-                        winMessage.textContent = `🏆 Tie game! ${winnerNames} all reached ${pointsToWin} points!`;
-                    }
-                    
-                    winMessage.style.display = 'block';
-                    
-                    // Highlight winning players
-                    winners.forEach(winner => {
-                        document.getElementById(`playerCard${winner.id}`).classList.add('winner');
-                        document.getElementById(`playerScore${winner.id}`).classList.add('winner');
-                    });
-                }
-            }
-            
-            // Reset card selection
-            function resetSelection() {
-                selectedCards = [];
-                
-                // Clear card selections visually
-                document.querySelectorAll('.card.selected').forEach(card => {
-                    card.classList.remove('selected');
-                });
-                
-                updateCardSelectionInfo();
-                updateSubmitButton();
-            }
-            
-            // Move to next round
-            function nextRound() {
-                currentRoundResults = [];
-                equationContainer.style.display = 'none';
-                nextRoundBtn.style.display = 'none';
-                
-                // Reset to first player
-                currentPlayerIndex = 0;
-                updatePlayerTurn();
-                
-                // Enable drawing cards
-                drawBtn.disabled = false;
-                
-                addToLog(`Starting new round. ${players[currentPlayerIndex].name}'s turn`);
-            }
-            
-            // Update player turn display
-            function updatePlayerTurn() {
-                playerTurn.textContent = `${players[currentPlayerIndex].name}'s Turn`;
-                
-                // Highlight current player's card
-                document.querySelectorAll('.player-card').forEach((card, index) => {
-                    if (index === currentPlayerIndex) {
-                        card.classList.add('active');
-                    } else {
-                        card.classList.remove('active');
-                    }
-                });
-            }
-            
-            // Update deck information
-            function updateDeckInfo() {
-                deckInfo.textContent = `Cards remaining: ${deck.length}`;
-            }
-            
-            // Game log functions
-            function addToLog(message) {
-                const logEntry = document.createElement('div');
-                logEntry.className = 'log-entry';
-                logEntry.textContent = message;
-                gameLog.appendChild(logEntry);
-                gameLog.scrollTop = gameLog.scrollHeight;
-            }
-            
-            function clearGameLog() {
-                gameLog.innerHTML = '';
-            }
-            
-            // Event listeners
-            drawBtn.addEventListener('click', drawCards);
-            submitBtn.addEventListener('click', submitEquation);
-            resetSelectionBtn.addEventListener('click', resetSelection);
-            nextRoundBtn.addEventListener('click', nextRound);
-            resetGameBtn.addEventListener('click', initializeGame);
-            applySettingsBtn.addEventListener('click', initializeGame);
-            
-            // Initialize the game on load
-            initializeGame();
-        });
-    </script>
-</body>
-</html>
+                cardsContainer.innerHTML =
